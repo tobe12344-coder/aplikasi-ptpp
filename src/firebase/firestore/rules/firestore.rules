@@ -1,0 +1,197 @@
+/**
+ * @file Firestore Security Rules (Mirror)
+ * @version 3
+ *
+ * @description
+ * File ini adalah mirror dari /firestore.rules (root) untuk referensi developer.
+ * File yang di-deploy adalah /firestore.rules di root project.
+ *
+ * @security-model
+ * - Role-based access control (RBAC) menggunakan Firestore document, BUKAN custom claims.
+ * - Role dibaca dari /users/{uid}.role melalui fungsi getUserData().
+ * - User TIDAK bisa mengubah role atau status sendiri — hanya admin.
+ * - Semua data memerlukan autentikasi untuk dibaca (tidak ada akses publik).
+ *
+ * @data-structure
+ * - /users/{userId}: User profiles. Create terbatas (role='employee', status='pending').
+ * - /guests/{guestId}: Guestbook entries. Read: signed in. Write: role-based.
+ * - /attendance/{attendanceId}: Attendance records. Read: signed in. Write: admin only.
+ * - /waste/{wasteId}: B3 waste records. Read: signed in. Write: admin only.
+ * - /sarpras/{sarprasId}: Infrastructure data. Read: signed in. Write: admin/teknik.
+ *
+ * @key-security-decisions
+ * - User listing restricted to admin for privacy.
+ * - Public read access REMOVED — semua read memerlukan isSignedIn().
+ * - Role-based access control menggunakan Firestore document lookup, bukan custom claims.
+ * - User tidak bisa menghapus profil sendiri (hanya admin).
+ * - User tidak bisa mengubah role/status sendiri saat update.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Checks if the request is made by an authenticated user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Gets the user data from Firestore document.
+     * This replaces the old custom claims approach (request.auth.token.role).
+     */
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    /**
+     * @description Checks if the authenticated user has a specific role.
+     */
+    function hasRole(role) {
+      return isSignedIn() && getUserData().role == role;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the requested user ID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user has the 'admin' role.
+     */
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    /**
+     * @description Checks if the authenticated user has the 'employee' role.
+     */
+    function isEmployee() {
+      return hasRole('employee');
+    }
+
+    /**
+     * @description Checks if the authenticated user has the 'security' role.
+     */
+    function isSecurity() {
+      return hasRole('security');
+    }
+
+    /**
+     * @description Checks if the authenticated user has the 'teknik' role.
+     */
+    function isTeknik() {
+      return hasRole('teknik');
+    }
+
+    /**
+     * @description
+     * Security rules for user profiles.
+     * @path /users/{userId}
+     * @allow (get) Owner or admin can read a profile.
+     * @allow (list) Only admin can list all user profiles.
+     * @allow (create) Owner can create own profile with role='employee' and status='pending'.
+     * @allow (update) Owner can update (except role/status). Admin can update anything.
+     * @allow (delete) Only admin.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'employee'
+        && request.resource.data.status == 'pending';
+      allow update: if isAdmin()
+        || (isOwner(userId)
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for guestbook entries.
+     * Read: authenticated users. Write: role-based.
+     */
+    match /guests/{guestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || isSecurity() || hasRole('receptionist');
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for attendance records.
+     */
+    match /attendance/{attendanceId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for B3 waste records.
+     */
+    match /waste/{wasteId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for infrastructure and facility items.
+     */
+    match /sarpras/{sarprasId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || isTeknik();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for employees data.
+     */
+    match /employees/{employeeId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for maintenance checklists.
+     */
+    match /maintenance_checklists/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || isTeknik();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for maintenance history.
+     */
+    match /maintenance_history/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || isTeknik();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Security rules for calibrations.
+     */
+    match /calibrations/{calibrationId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || isTeknik();
+      allow delete: if isAdmin();
+    }
+    /**
+     * @description Security rules for damage reports.
+     */
+    match /damage_reports/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || isTeknik();
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    /**
+     * @description Izin untuk folder foto tamu.
+     * Mengizinkan siapa pun untuk membaca foto (untuk laporan).
+     * Mengizinkan penulisan jika pengguna terautentikasi (karena buku tamu diisi oleh staf yang login).
+     */
+    match /guest_photos/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    /**
+     * @description Aturan default untuk folder lain (opsional).
+     */
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
