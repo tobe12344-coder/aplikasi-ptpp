@@ -28,11 +28,13 @@ export default function LoginClient() {
       });
       router.push('/');
     } catch (err: any) {
-      console.error('Google Auth Error:', err);
-      // Determine user-friendly error message if available, else generic
-      const errMsg = err.code === 'auth/popup-closed-by-user' 
-        ? 'Login dibatalkan oleh pengguna.' 
-        : 'Gagal masuk dengan Google. Pastikan email Anda valid dan koneksi stabil.';
+      let errMsg = 'Gagal masuk dengan Google. Pastikan email Anda valid dan koneksi stabil.';
+      
+      if (err.message === 'NOT_REGISTERED') {
+        errMsg = 'Email Anda belum terdaftar. Silakan hubungi Administrator untuk mendaftarkan email Anda.';
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        errMsg = 'Login dibatalkan oleh pengguna.';
+      }
         
       setError(errMsg);
       toast({
@@ -48,7 +50,7 @@ export default function LoginClient() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <CardTitle>Sistem Manajemen AFTDEO</CardTitle>
+        <CardTitle>Digital Monitoring Maintenance</CardTitle>
         <CardDescription>Silakan masuk menggunakan akun Google Anda</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

@@ -45,6 +45,16 @@ service cloud.firestore {
     }
 
     // =========================================================================
+    // WHITELIST EMAILS
+    // =========================================================================
+    match /allowed_emails/{emailId} {
+      // Siapapun boleh membaca (untuk cek login), tapi hanya admin yg bisa nambah/hapus
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+
+    // =========================================================================
     // USER PROFILES
     // - User hanya bisa membaca profil sendiri (atau admin bisa baca semua)
     // - User hanya bisa membuat profil sendiri, dengan role 'employee' & status 'pending'
@@ -55,11 +65,11 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
 
-      // Create: user harus membuat profil sendiri, role harus 'employee', status harus 'pending'
+      // Create: user bisa membuat profilnya sendiri dan otomatis jadi admin (karena sudah difilter di sisi client via allowed_emails)
       allow create: if isOwner(userId)
         && request.resource.data.uid == userId
-        && request.resource.data.role == 'employee'
-        && request.resource.data.status == 'pending';
+        && request.resource.data.role == 'admin'
+        && request.resource.data.status == 'approved';
 
       // Update: user bisa update profil sendiri TAPI TIDAK bisa ubah role/status.
       // Admin bisa update apapun (termasuk role dan status).

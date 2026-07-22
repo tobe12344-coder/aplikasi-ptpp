@@ -18,13 +18,28 @@ export async function loginWithGoogle(auth: Auth) {
   const userCredential = await signInWithPopup(auth, provider);
   const user = userCredential.user;
 
-  // Check if user exists in Firestore
+  if (!user.email) {
+    await signOut(auth);
+    throw new Error('Email tidak ditemukan.');
+  }
+
   const db = getFirestore(auth.app);
+  
+  // 1. Cek apakah email user terdaftar di koleksi 'allowed_emails'
+  const allowedRef = doc(db, 'allowed_emails', user.email.toLowerCase());
+  const allowedDoc = await getDoc(allowedRef);
+
+  if (!allowedDoc.exists()) {
+    // Jika tidak ada di daftar whitelist, paksa logout dan lemparkan error
+    await signOut(auth);
+    throw new Error('NOT_REGISTERED');
+  }
+
+  // 2. Jika diizinkan, pastikan profilnya ada di koleksi 'users'
   const userRef = doc(db, 'users', user.uid);
   const userDoc = await getDoc(userRef);
 
   if (!userDoc.exists()) {
-    // User baru, langsung buatkan profil dengan role admin dan status approved
     await setDoc(userRef, {
       uid: user.uid,
       email: user.email,

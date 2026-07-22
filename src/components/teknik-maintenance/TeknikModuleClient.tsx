@@ -13,14 +13,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { differenceInDays, parseISO } from 'date-fns';
 
 const sarprasMenus = [
-  {
-    title: 'Monitoring Mobil Refueller',
-    description: 'Pantau kondisi 4 unit mobil tangki pengisi pesawat.',
-    icon: Truck,
-    href: '/teknik-maintenance/refueller',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-  },
+// {
+//   title: 'Monitoring Mobil Refueller',
+//   description: 'Pantau kondisi 4 unit mobil tangki pengisi pesawat.',
+//   icon: Truck,
+//   href: '/teknik-maintenance/refueller',
+//   color: 'text-blue-600',
+//   bgColor: 'bg-blue-50',
+// },
 
   {
     title: 'Inventaris Barang Workshop',
@@ -46,14 +46,14 @@ const sarprasMenus = [
     color: 'text-amber-600',
     bgColor: 'bg-amber-50',
   },
-  {
-    title: 'Laporan Kerusakan Sarpras',
-    description: 'Pelaporan kerusakan dan pencatatan perbaikan sarana & prasarana (SF PTPP).',
-    icon: AlertOctagon,
-    href: '/teknik-maintenance/laporan-kerusakan',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-  },
+// {
+//   title: 'Laporan Kerusakan Sarpras',
+//   description: 'Pelaporan kerusakan dan pencatatan perbaikan sarana & prasarana (SF PTPP).',
+//   icon: AlertOctagon,
+//   href: '/teknik-maintenance/laporan-kerusakan',
+//   color: 'text-purple-600',
+//   bgColor: 'bg-purple-50',
+// },
 ];
 
 export default function TeknikModuleClient() {
@@ -230,14 +230,14 @@ export default function TeknikModuleClient() {
       )}
 
       {/* Quick Dashboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))
         ) : (
           <>
-            <Card className="bg-blue-600 text-white border-none shadow-md overflow-hidden relative">
+{/*             <Card className="bg-blue-600 text-white border-none shadow-md overflow-hidden relative">
               <div className="absolute right-[-10px] top-[-10px] opacity-20">
                 <Truck className="h-24 w-24" />
               </div>
@@ -245,7 +245,7 @@ export default function TeknikModuleClient() {
                 <p className="text-xs font-bold uppercase opacity-80">Total Armada</p>
                 <p className="text-3xl font-black">{stats?.totalVehicles || 0} <span className="text-sm font-normal">Unit</span></p>
               </CardContent>
-            </Card>
+            </Card> */}
 
             <Card className={`${stats?.brokenUnits && stats.brokenUnits > 0 ? 'bg-red-600 animate-pulse' : 'bg-white border-2'} transition-all duration-500`}>
               <CardContent className="p-4 flex items-center gap-4 h-full">
@@ -286,13 +286,7 @@ export default function TeknikModuleClient() {
         )}
       </div>
 
-      {/* Operational Feedback */}
-      {!loading && stats?.isPerfect && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 text-green-800 shadow-sm">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <p className="text-sm font-medium">Seluruh sarana dan prasarana dalam kondisi optimal. Tidak ada laporan kerusakan atau stok kritis saat ini.</p>
-        </div>
-      )}
+
 
       {/* Main Menus */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">

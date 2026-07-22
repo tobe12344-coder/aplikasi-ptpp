@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Printer, FileEdit, Bell, Search, RefreshCw } from 'lucide-react';
+import { Printer, FileEdit, Bell, Search, RefreshCw, Plus } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, type CollectionReference } from 'firebase/firestore';
 import type { MaintenanceChecklist } from '@/lib/types';
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { parse, differenceInDays, isBefore, isToday, parseISO, format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import CeklishActionModal from './CeklishActionModal';
+import AddCeklishModal from './AddCeklishModal';
 import PrintBlankForm from './PrintBlankForm';
 import PrintAllChecklists from './PrintAllChecklists';
 import Link from 'next/link';
@@ -47,6 +48,7 @@ export default function CeklishMaintenanceClient() {
   const [seeding, setSeeding] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MaintenanceChecklist | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [itemToPrint, setItemToPrint] = useState<MaintenanceChecklist | null>(null);
   const [isPrintingAll, setIsPrintingAll] = useState(false);
 
@@ -199,10 +201,16 @@ export default function CeklishMaintenanceClient() {
             
 
             {data && data.length > 0 && (
-              <Button onClick={handlePrintAll} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
-                <Printer className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Cetak Rekap</span>
-              </Button>
+              <>
+                <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Tambah Item</span>
+                </Button>
+                <Button onClick={handlePrintAll} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                  <Printer className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Cetak Rekap</span>
+                </Button>
+              </>
             )}
 
             <Link href="/sarpras/ceklish-maintenance/history">
@@ -358,6 +366,12 @@ export default function CeklishMaintenanceClient() {
           item={selectedItem}
         />
       )}
+
+      {/* Add Modal */}
+      <AddCeklishModal 
+        isOpen={isAddModalOpen} 
+        setIsOpen={setIsAddModalOpen} 
+      />
     </div>
   );
 }

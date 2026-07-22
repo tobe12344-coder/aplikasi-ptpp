@@ -7,6 +7,8 @@ import {getFirestore, type Firestore} from 'firebase/firestore';
 import {getStorage, type FirebaseStorage} from 'firebase/storage';
 import {firebaseConfig} from '@/firebase/config';
 
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+
 export function initializeFirebase(): {
   firebaseApp: FirebaseApp;
   auth: Auth;
@@ -24,6 +26,23 @@ export function initializeFirebase(): {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
   const storage = getStorage(firebaseApp);
+
+  // Initialize App Check
+  if (typeof window !== 'undefined') {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (recaptchaSiteKey) {
+      initializeAppCheck(firebaseApp, {
+        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    } else {
+      console.warn('App Check skipped: NEXT_PUBLIC_RECAPTCHA_SITE_KEY is missing');
+    }
+  }
+
   return {firebaseApp, auth, firestore, storage};
 }
 

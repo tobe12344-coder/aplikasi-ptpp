@@ -31,9 +31,8 @@ export default function Header() {
     <header className="pertamina-header-gradient text-white shadow-lg p-4 flex justify-between items-center">
       <div>
         <h1 className="text-xl md:text-2xl font-bold">
-          SISTEM MANAJEMEN AFTDEO SORONG
+          DIGITAL MONITORING MAINTENANCE
         </h1>
-        <p className="text-sm opacity-90">PT Pertamina (Persero)</p>
       </div>
       {user && !loading && (
         <div className="flex items-center gap-4">
