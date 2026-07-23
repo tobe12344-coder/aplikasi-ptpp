@@ -293,7 +293,7 @@ export default function AssetManager({ category, assets, loading, canManage }: A
                 {printQrAsset && (
                   <QRCode 
                     id="qr-svg"
-                    value={`${window.location.origin}/teknik-maintenance/asset/${printQrAsset.id}`} 
+                    value={`${window.location.origin}/asset/${printQrAsset.id}`} 
                     size={150} 
                   />
                 )}

@@ -7,7 +7,7 @@ export default function LaporanKerusakanPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       <div className="p-4 md:p-8 flex-1">
-        <BackButton href="/teknik-maintenance" />
+        <BackButton href="/" />
         <div className="container mx-auto max-w-7xl mt-4">
           <div className="mb-8">
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">Laporan Kerusakan Sarpras</h1>

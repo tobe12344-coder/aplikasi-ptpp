@@ -9,7 +9,7 @@ export default function MaintenanceHistoryPage() {
     <>
       <Header />
       <div className="p-4 md:p-8">
-        <BackButton href="/teknik-maintenance/ceklish-maintenance" />
+        <BackButton href="/ceklish-maintenance" />
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Riwayat Inspeksi</h1>

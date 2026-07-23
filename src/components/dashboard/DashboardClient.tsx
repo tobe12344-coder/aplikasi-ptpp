@@ -125,7 +125,7 @@ const dashboardItems = [
     iconColor: 'text-yellow-600',
   },
   {
-    href: '/teknik-maintenance',
+    href: '/',
     icon: Wrench,
     title: 'Teknik & Maintenance',
     description: 'Inventaris bengkel, refueller, dan status fasilitas teknis.',

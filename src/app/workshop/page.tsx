@@ -11,7 +11,7 @@ export default function WorkshopAssetsPage() {
     <>
       <Header />
       <div className="p-4 md:p-8">
-        <BackButton href="/teknik-maintenance" />
+        <BackButton href="/" />
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Manajemen Inventaris Workshop</h1>

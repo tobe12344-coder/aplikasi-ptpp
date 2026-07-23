@@ -13,6 +13,7 @@ import { differenceInDays, startOfDay, format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -56,6 +57,7 @@ const initialData = [
 const calibrationSchema = z.object({
   kategori: z.string().min(1, 'Kategori wajib diisi'),
   namaPeralatan: z.string().min(1, 'Nama peralatan wajib diisi'),
+  noSeri: z.string().optional().default(''),
   tahunPemakaian: z.string().min(4, 'Tahun pemakaian tidak valid'),
   kondisiFisik: z.enum(['Berfungsi', 'Tidak Berfungsi']),
   teraTerakhir: z.string().min(1, 'Tanggal tera terakhir wajib diisi'),
@@ -88,6 +90,7 @@ export default function CalibrationClient() {
     defaultValues: {
       kategori: 'FLOW METER',
       namaPeralatan: '',
+      noSeri: '',
       tahunPemakaian: new Date().getFullYear().toString(),
       kondisiFisik: 'Berfungsi',
       teraTerakhir: format(new Date(), 'yyyy-MM-dd'),
@@ -121,6 +124,7 @@ export default function CalibrationClient() {
     form.reset({
       kategori: record.kategori,
       namaPeralatan: record.namaPeralatan,
+      noSeri: record.noSeri || '',
       tahunPemakaian: record.tahunPemakaian,
       kondisiFisik: record.kondisiFisik,
       teraTerakhir: record.teraTerakhir,
@@ -164,6 +168,7 @@ export default function CalibrationClient() {
     form.reset({
       kategori: 'FLOW METER',
       namaPeralatan: '',
+      noSeri: '',
       tahunPemakaian: new Date().getFullYear().toString(),
       kondisiFisik: 'Berfungsi',
       teraTerakhir: format(new Date(), 'yyyy-MM-dd'),
@@ -322,9 +327,12 @@ export default function CalibrationClient() {
                             <TableCell className="text-center font-medium">{i + 1}</TableCell>
                             <TableCell>
                               <div className="font-semibold text-gray-900">{record.namaPeralatan}</div>
+                              {record.noSeri && (
+                                <div className="text-xs font-semibold text-slate-700 mt-0.5">No. Seri: {record.noSeri}</div>
+                              )}
                               <div className="text-xs text-muted-foreground mt-0.5">Th. Pemakaian: {record.tahunPemakaian}</div>
                               {record.keterangan && (
-                                <div className="text-xs text-gray-500 mt-0.5 italic">Ket: {record.keterangan}</div>
+                                <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{record.keterangan}</div>
                               )}
                             </TableCell>
                             <TableCell className="text-center">
@@ -353,7 +361,7 @@ export default function CalibrationClient() {
                                   onClick={() => handleEdit(record)}
                                 >
                                   <Edit2 className="h-4 w-4 sm:mr-2" />
-                                  <span className="hidden sm:inline">Edit</span>
+                                  <span className="hidden sm:inline">Update</span>
                                 </Button>
                                 <Button 
                                   size="sm" 
@@ -420,7 +428,7 @@ export default function CalibrationClient() {
                   <FormItem className="col-span-1 md:col-span-2">
                     <FormLabel>Kategori Peralatan</FormLabel>
                     <FormControl>
-                      <Input placeholder="Contoh: FLOW METER, PERALATAN LAIN" {...field} />
+                      <Input placeholder="Contoh: FLOW METER, PERALATAN LAIN" {...field} disabled={!!editingId} />
                     </FormControl>
                     <p className="text-[10px] text-muted-foreground mt-1">Ketikkan kategori, misal: FLOW METER, TANKI TIMBUN/REFUELLER, PERALATAN LAIN</p>
                     <FormMessage />
@@ -430,7 +438,15 @@ export default function CalibrationClient() {
                 <FormField control={form.control} name="namaPeralatan" render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-2">
                     <FormLabel>Nama Peralatan</FormLabel>
-                    <FormControl><Input placeholder="Contoh: Refueller DEO-10" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Contoh: Refueller DEO-10" {...field} disabled={!!editingId} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="noSeri" render={({ field }) => (
+                  <FormItem className="col-span-1 md:col-span-2">
+                    <FormLabel>No. Seri / Kode Unit</FormLabel>
+                    <FormControl><Input placeholder="Contoh: 1915008" {...field} disabled={!!editingId} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -438,7 +454,7 @@ export default function CalibrationClient() {
                 <FormField control={form.control} name="tahunPemakaian" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tahun Pemakaian</FormLabel>
-                    <FormControl><Input type="number" placeholder="Contoh: 2010" {...field} /></FormControl>
+                    <FormControl><Input type="number" placeholder="Contoh: 2010" {...field} disabled={!!editingId} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -476,7 +492,7 @@ export default function CalibrationClient() {
                 <FormField control={form.control} name="keterangan" render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-2">
                     <FormLabel>Keterangan (Opsional)</FormLabel>
-                    <FormControl><Input placeholder="Contoh: No. Seri: 1915008" {...field} /></FormControl>
+                    <FormControl><Textarea placeholder="Tambahkan keterangan (opsional)" {...field} className="resize-none" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

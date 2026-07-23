@@ -300,6 +300,7 @@ export interface CalibrationRecord {
   id: string;
   kategori: string; // 'FLOW METER' | 'TANKI TIMBUN/REFUELLER' | 'PERALATAN LAIN'
   namaPeralatan: string;
+  noSeri?: string;
   tahunPemakaian: string;
   kondisiFisik: 'Berfungsi' | 'Tidak Berfungsi';
   teraTerakhir: string; // YYYY-MM-DD

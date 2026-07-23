@@ -19,7 +19,7 @@ export default function RefuellerMenuPage() {
     <>
       <Header />
       <div className="p-4 md:p-8">
-        <BackButton href="/teknik-maintenance" />
+        <BackButton href="/" />
         <div className="max-w-5xl mx-auto">
           <div className="mb-10 text-center md:text-left">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Monitoring Mobil Refueller</h1>
@@ -28,7 +28,7 @@ export default function RefuellerMenuPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {refuellerUnits.map((unit) => (
-              <Link key={unit.id} href={`/teknik-maintenance/refueller/${unit.id}`} className="group">
+              <Link key={unit.id} href={`/refueller/${unit.id}`} className="group">
                 <Card className="h-full hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30">
                   <CardHeader className="flex flex-col items-center text-center p-6">
                     <div className={`p-4 rounded-full ${unit.color} ${unit.iconColor} mb-4 group-hover:scale-110 transition-transform`}>

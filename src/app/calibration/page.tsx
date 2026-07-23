@@ -9,7 +9,7 @@ export default function CalibrationPage() {
     <>
       <Header />
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-        <BackButton href="/teknik-maintenance" />
+        <BackButton href="/" />
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Kalibrasi dan Tera Peralatan</h1>

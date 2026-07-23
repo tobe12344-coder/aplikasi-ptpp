@@ -40,7 +40,7 @@ export default function RefuellerDetailPage() {
     <>
       <Header />
       <div className="p-4 md:p-8">
-        <BackButton href="/teknik-maintenance/refueller" />
+        <BackButton href="/refueller" />
         <div className="max-w-4xl mx-auto">
           <RefuellerUnitClient 
             unitName={unitName}
