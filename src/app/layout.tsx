@@ -9,7 +9,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'AFTDEO Manager',
+  title: 'DIGIMON',
   description: 'Sistem Internal - Pertamina AFTDEO Sorong',
 };
 
