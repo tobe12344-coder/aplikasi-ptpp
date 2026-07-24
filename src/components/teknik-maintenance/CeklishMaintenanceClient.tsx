@@ -6,9 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Printer, FileEdit, Bell, Search, RefreshCw, Plus } from 'lucide-react';
+import { Printer, FileEdit, Bell, Search, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, type CollectionReference } from 'firebase/firestore';
+import { collection, doc, writeBatch, deleteDoc, type CollectionReference } from 'firebase/firestore';
 import type { MaintenanceChecklist } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import PrintBlankForm from './PrintBlankForm';
 import PrintAllChecklists from './PrintAllChecklists';
 import Link from 'next/link';
 import { History } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Initial Data for Seeding
 const initialData: Omit<MaintenanceChecklist, 'id'>[] = [
@@ -44,6 +45,7 @@ const initialData: Omit<MaintenanceChecklist, 'id'>[] = [
 
 export default function CeklishMaintenanceClient() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [seeding, setSeeding] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MaintenanceChecklist | null>(null);
@@ -158,6 +160,16 @@ export default function CeklishMaintenanceClient() {
     }, 100);
   };
 
+  const handleDelete = async (id: string | undefined) => {
+    if (!firestore || !id) return;
+    if (!window.confirm('Apakah Anda yakin ingin menghapus item ini? Data yang dihapus tidak dapat dikembalikan.')) return;
+    try {
+      await deleteDoc(doc(firestore, 'maintenance_checklists', id));
+      toast({ title: 'Berhasil', description: 'Item berhasil dihapus.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Gagal Menghapus', description: error.message });
+    }
+  };
 
   if (isPrintingAll && data) {
     return <PrintAllChecklists data={data} />;
@@ -345,6 +357,15 @@ export default function CeklishMaintenanceClient() {
                             >
                               <FileEdit className="h-4 w-4 sm:mr-2" />
                               <span className="hidden sm:inline">Update</span>
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              className="h-8 px-2"
+                              onClick={() => handleDelete(row.id)}
+                            >
+                              <Trash2 className="h-4 w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Hapus</span>
                             </Button>
                           </div>
                         </TableCell>

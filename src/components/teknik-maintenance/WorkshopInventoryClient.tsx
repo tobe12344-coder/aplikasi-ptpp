@@ -6,6 +6,7 @@ import { collection, query, orderBy, type CollectionReference } from 'firebase/f
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { WorkshopMaterial, WorkshopTransaction, Employee } from '@/lib/types';
 import { addWorkshopMaterial, updateWorkshopMaterial, deleteWorkshopMaterial, addWorkshopTransaction } from '@/firebase/firestore/workshop';
+import { sendWhatsAppNotification } from '@/app/actions/fonnte';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,6 +110,13 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
     return transactions.filter(t => t.date.startsWith(selectedReportMonth));
   }, [transactions, selectedReportMonth]);
 
+  const [reportTypeFilter, setReportTypeFilter] = useState<'Semua' | 'Masuk' | 'Keluar'>('Semua');
+
+  const displayedReportTransactions = useMemo(() => {
+    if (reportTypeFilter === 'Semua') return monthlyTransactions;
+    return monthlyTransactions.filter(t => t.type === reportTypeFilter);
+  }, [monthlyTransactions, reportTypeFilter]);
+
   const [materialForm, setMaterialForm] = useState<{
     name: string;
     code: string;
@@ -189,6 +197,15 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
       materialName: material.name
     });
 
+    if (type === 'Masuk') {
+      const waMessage = `*[INFO BARANG MASUK WORKSHOP]*\n\n📦 *Barang:* ${material.name}\n🔢 *Jumlah:* ${transForm.quantity} ${material.unit || 'Pcs'}\n👤 *Petugas:* ${transForm.officer}\n📝 *Keterangan:* ${transForm.notes || '-'}\n📅 *Waktu:* ${format(new Date(transForm.date), 'dd MMMM yyyy', { locale: indonesiaLocale })}`;
+      
+      // Fire and forget WA notification
+      sendWhatsAppNotification(waMessage, material.photo || undefined).catch(err => {
+        console.error("Gagal mengirim WA notifikasi:", err);
+      });
+    }
+
     toast({ title: 'Berhasil', description: `Data barang ${type.toLowerCase()} telah dicatat.` });
     setTransForm({ materialId: '', quantity: 1, type: 'Masuk', date: new Date().toISOString().split('T')[0], officer: '', notes: '' });
   };
@@ -209,8 +226,8 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
   }, [materials, transactions]);
 
   const exportMonthlyPDF = () => {
-    if (monthlyTransactions.length === 0) {
-      toast({ variant: 'destructive', title: 'Tidak ada data', description: 'Belum ada transaksi untuk bulan yang dipilih.' });
+    if (displayedReportTransactions.length === 0) {
+      toast({ variant: 'destructive', title: 'Tidak ada data', description: 'Belum ada transaksi untuk kriteria yang dipilih.' });
       return;
     }
 
@@ -225,7 +242,7 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
     doc.setFontSize(10);
     doc.text(`Periode: ${monthName}`, doc.internal.pageSize.getWidth() / 2, 37, { align: 'center' });
 
-    const tableData = monthlyTransactions.map((t, idx) => [
+    const tableData = displayedReportTransactions.map((t, idx) => [
       idx + 1,
       format(new Date(t.date), 'dd/MM/yyyy'),
       t.materialName,
@@ -429,7 +446,9 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
                       <Select value={transForm.officer} onValueChange={(v) => setTransForm({...transForm, officer: v})}>
                         <SelectTrigger><SelectValue placeholder="Pilih petugas..." /></SelectTrigger>
                         <SelectContent>
-                          { employees.map(e => <SelectItem key={e.id} value={e.name}>{e.name}</SelectItem>)}
+                          <SelectItem value="Kiamnas Meithson">Kiamnas Meithson</SelectItem>
+                          <SelectItem value="Lelyana">Lelyana</SelectItem>
+                          <SelectItem value="Akbar">Akbar</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -530,14 +549,26 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
         {/* TAB 5: LAPORAN BULANAN */}
         <TabsContent value="report">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0">
               <div>
                 <CardTitle>Rekapitulasi Mutasi Bulanan</CardTitle>
                 <CardDescription>Semua transaksi barang di bulan {monthLabel}.</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={exportMonthlyPDF} className="gap-2" disabled={monthlyTransactions.length === 0}>
-                <Printer className="h-4 w-4" /> Cetak Laporan (PDF)
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={reportTypeFilter} onValueChange={(v: any) => setReportTypeFilter(v)}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Semua Mutasi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Semua">Semua Mutasi</SelectItem>
+                    <SelectItem value="Masuk">Barang Masuk</SelectItem>
+                    <SelectItem value="Keluar">Barang Keluar</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={exportMonthlyPDF} className="gap-2" disabled={displayedReportTransactions.length === 0}>
+                  <Printer className="h-4 w-4" /> Cetak PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="border rounded-md overflow-x-auto">
@@ -555,7 +586,7 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
                   <TableBody>
                     {loadingTransactions ? (
                       <TableRow><TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                    ) : monthlyTransactions.length > 0 ? monthlyTransactions.map(t => (
+                    ) : displayedReportTransactions.length > 0 ? displayedReportTransactions.map(t => (
                       <TableRow key={t.id}>
                         <TableCell className="text-xs font-medium">{format(new Date(t.date), 'dd MMM yyyy', { locale: indonesiaLocale })}</TableCell>
                         <TableCell className="font-bold text-xs">{t.materialName}</TableCell>
@@ -569,7 +600,7 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
                         <TableCell className="text-[10px] text-muted-foreground italic max-w-[150px] truncate">{t.notes || '-'}</TableCell>
                       </TableRow>
                     )) : (
-                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">Belum ada transaksi tercatat untuk bulan ini.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">Belum ada transaksi tercatat untuk kriteria ini.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -594,22 +625,53 @@ export default function WorkshopInventoryClient({ }: WorkshopInventoryClientProp
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid gap-2">
-              <label className="text-sm font-bold flex items-center gap-2"><Camera className="h-4 w-4" /> Foto Barang</label>
-              <div 
-                onClick={handleCapturePhoto}
-                className={`relative w-full aspect-video rounded-lg border-2 border-dashed cursor-pointer hover:bg-muted transition-colors flex flex-col items-center justify-center overflow-hidden ${photoPreview ? 'border-primary' : 'border-muted-foreground/30 bg-muted/20'}`}
-              >
+              <label className="text-sm font-bold flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Foto Barang</label>
+              
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={handleCapturePhoto}>
+                  <Camera className="h-4 w-4 mr-2" /> Ambil Kamera
+                </Button>
+                <div className="flex-1 relative">
+                  <Input 
+                    type="file" 
+                    accept="image/*" 
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                    title="Pilih dari Galeri"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = async () => {
+                          const base64Str = reader.result as string;
+                          const compressed = await resizeAndCompressImage(base64Str);
+                          setPhotoPreview(compressed);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                      // Reset file input value so selecting the same file works again
+                      e.target.value = '';
+                    }}
+                  />
+                  <Button type="button" variant="outline" className="w-full relative z-0">
+                    <ImageIcon className="h-4 w-4 mr-2" /> Dari Galeri
+                  </Button>
+                </div>
+              </div>
+
+              <div className={`relative w-full aspect-video rounded-lg border-2 mt-2 flex flex-col items-center justify-center overflow-hidden ${photoPreview ? 'border-primary' : 'border-dashed border-muted-foreground/30 bg-muted/20'}`}>
                 {photoPreview ? (
                   <>
                     <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <RefreshCcw className="text-white h-8 w-8" />
+                    <div className="absolute top-2 right-2">
+                      <Button size="icon" variant="destructive" onClick={(e) => { e.stopPropagation(); setPhotoPreview(null); }} className="h-8 w-8">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Camera className="h-8 w-8 mb-2 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Klik untuk Ambil Foto</span>
+                    <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/50" />
+                    <span className="text-xs font-medium text-muted-foreground">Belum ada foto</span>
                   </>
                 )}
               </div>

@@ -1,20 +1,26 @@
 'use server';
 
-export async function sendWhatsAppNotification(message: string) {
+export async function sendWhatsAppNotification(message: string, imageUrl?: string) {
   const token = 'CuGgJDvoXw1ULh5QT8ui';
   const targetNumbers = '085399770069,085298099251';
 
   try {
+    const params = new URLSearchParams({
+      target: targetNumbers,
+      message: message,
+      countryCode: '62', // Default country code for Indonesia
+    });
+
+    if (imageUrl) {
+      params.append('url', imageUrl);
+    }
+
     const response = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: {
         'Authorization': token,
       },
-      body: new URLSearchParams({
-        target: targetNumbers,
-        message: message,
-        countryCode: '62', // Default country code for Indonesia
-      }),
+      body: params,
     });
 
     const data = await response.json();

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, Camera } from 'lucide-react';
 import type { MaintenanceChecklist } from '@/lib/types';
 import { FullscreenWebcam } from '@/components/common/FullscreenWebcam';
+import { sendWhatsAppNotification } from '@/app/actions/fonnte';
 
 interface CeklishActionModalProps {
   isOpen: boolean;
@@ -91,6 +92,12 @@ export default function CeklishActionModal({ isOpen, setIsOpen, item }: CeklishA
         formUrl: formUrl || null,
         createdAt: new Date().toISOString(),
         // createdBy could be added if user info is available
+      });
+
+      // Fire and forget WA notification
+      const waMessage = `*[UPDATE CEKLISH MAINTENANCE]*\n\n✅ *Item:* ${item.item}\n🔧 *SF:* ${item.sf}\n📅 *Tgl Inspeksi:* ${format(new Date(lastInspection), 'dd MMMM yyyy')}\n📝 *Keterangan:* ${keterangan || '-'}`;
+      sendWhatsAppNotification(waMessage, formUrl || undefined).catch(err => {
+        console.error("Gagal mengirim WA notifikasi:", err);
       });
 
       toast({ title: 'Berhasil', description: 'Data ceklish berhasil diperbarui' });

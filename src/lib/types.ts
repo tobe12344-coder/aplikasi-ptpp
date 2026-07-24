@@ -296,6 +296,12 @@ export interface MaintenanceHistory {
   createdBy?: string;
 }
 
+export interface CalibrationCertificate {
+  year: string;
+  fileUrl: string;
+  fileName: string;
+}
+
 export interface CalibrationRecord {
   id: string;
   kategori: string; // 'FLOW METER' | 'TANKI TIMBUN/REFUELLER' | 'PERALATAN LAIN'
@@ -305,7 +311,9 @@ export interface CalibrationRecord {
   kondisiFisik: 'Berfungsi' | 'Tidak Berfungsi';
   teraTerakhir: string; // YYYY-MM-DD
   teraBerikutnya: string; // YYYY-MM-DD
+  usulanProgram?: string;
   keterangan: string;
+  certificates?: CalibrationCertificate[];
   timestamp: Timestamp;
 }
 

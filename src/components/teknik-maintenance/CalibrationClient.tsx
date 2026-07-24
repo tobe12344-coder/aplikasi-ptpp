@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, query, orderBy, type CollectionReference } from 'firebase/firestore';
 import { addCalibration, updateCalibration, deleteCalibration } from '@/firebase/firestore/sarpras';
 import type { CalibrationRecord } from '@/lib/types';
@@ -14,15 +14,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit2, Trash2, Loader2, AlertCircle, Bell, Search, Printer } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, AlertCircle, Bell, Search, Printer, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { writeBatch, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const initialData = [
   // A FLOW METER
@@ -53,7 +54,6 @@ const initialData = [
   { kategori: 'PERALATAN LAIN', namaPeralatan: 'EMCE Meter 1153', tahunPemakaian: '2022', kondisiFisik: 'Berfungsi', teraTerakhir: '2024-02-16', teraBerikutnya: '2025-02-15', keterangan: 'SN : 401.214' },
   { kategori: 'PERALATAN LAIN', namaPeralatan: 'EMCE Meter 1153', tahunPemakaian: '2021', kondisiFisik: 'Berfungsi', teraTerakhir: '2021-03-22', teraBerikutnya: '2024-03-21', keterangan: 'Operasional' },
 ];
-
 const calibrationSchema = z.object({
   kategori: z.string().min(1, 'Kategori wajib diisi'),
   namaPeralatan: z.string().min(1, 'Nama peralatan wajib diisi'),
@@ -62,6 +62,7 @@ const calibrationSchema = z.object({
   kondisiFisik: z.enum(['Berfungsi', 'Tidak Berfungsi']),
   teraTerakhir: z.string().min(1, 'Tanggal tera terakhir wajib diisi'),
   teraBerikutnya: z.string().min(1, 'Tanggal tera berikutnya wajib diisi'),
+  usulanProgram: z.string().optional().default('KALIBRASI EKSTERNAL'),
   keterangan: z.string().optional().default(''),
 });
 
@@ -69,6 +70,7 @@ type CalibrationFormValues = z.infer<typeof calibrationSchema>;
 
 export default function CalibrationClient() {
   const firestore = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -77,6 +79,9 @@ export default function CalibrationClient() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [seeding, setSeeding] = useState(false);
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [certYear, setCertYear] = useState<string>(new Date().getFullYear().toString());
+  const [downloadingRecord, setDownloadingRecord] = useState<CalibrationRecord | null>(null);
 
   const calibrationQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -95,6 +100,7 @@ export default function CalibrationClient() {
       kondisiFisik: 'Berfungsi',
       teraTerakhir: format(new Date(), 'yyyy-MM-dd'),
       teraBerikutnya: format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd'),
+      usulanProgram: 'KALIBRASI EKSTERNAL',
       keterangan: '',
     },
   });
@@ -102,16 +108,32 @@ export default function CalibrationClient() {
   const onSubmit = async (values: CalibrationFormValues) => {
     setIsSubmitting(true);
     try {
+      let certificates = editingId ? (records?.find(r => r.id === editingId)?.certificates || []) : [];
+      let newCertificates = [...certificates];
+
+      if (editingId && certFile && storage && certYear) {
+        const fileRef = ref(storage, `calibrations/${editingId}/${certYear}_${certFile.name}`);
+        await uploadBytes(fileRef, certFile);
+        const fileUrl = await getDownloadURL(fileRef);
+        
+        newCertificates = newCertificates.filter(c => c.year !== certYear);
+        newCertificates.push({ year: certYear, fileUrl, fileName: certFile.name });
+      }
+
+      const payload = { ...values, certificates: newCertificates };
+
       if (editingId) {
-        updateCalibration(firestore, editingId, values);
+        updateCalibration(firestore, editingId, payload);
         toast({ title: 'Berhasil', description: 'Data kalibrasi diperbarui.' });
       } else {
-        addCalibration(firestore, values);
+        addCalibration(firestore, payload);
         toast({ title: 'Berhasil', description: 'Data kalibrasi ditambahkan.' });
       }
       setIsDialogOpen(false);
       form.reset();
       setEditingId(null);
+      setCertFile(null);
+      setCertYear(new Date().getFullYear().toString());
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Gagal menyimpan data.' });
     } finally {
@@ -121,6 +143,8 @@ export default function CalibrationClient() {
 
   const handleEdit = (record: CalibrationRecord) => {
     setEditingId(record.id);
+    setCertFile(null);
+    setCertYear(new Date().getFullYear().toString());
     form.reset({
       kategori: record.kategori,
       namaPeralatan: record.namaPeralatan,
@@ -129,6 +153,7 @@ export default function CalibrationClient() {
       kondisiFisik: record.kondisiFisik,
       teraTerakhir: record.teraTerakhir,
       teraBerikutnya: record.teraBerikutnya,
+      usulanProgram: record.usulanProgram || 'KALIBRASI EKSTERNAL',
       keterangan: record.keterangan || '',
     });
     setIsDialogOpen(true);
@@ -145,19 +170,27 @@ export default function CalibrationClient() {
   };
 
   const handleSeed = async () => {
-    if (!firestore || records?.length) return;
+    if (!firestore) return;
     setSeeding(true);
     try {
       const batch = writeBatch(firestore);
       const colRef = collection(firestore, 'calibrations');
+
+      // Delete existing records to allow re-seeding with clean data
+      if (records && records.length > 0) {
+        records.forEach(record => {
+          batch.delete(doc(colRef, record.id));
+        });
+      }
+
       initialData.forEach((item) => {
         const docRef = doc(colRef);
         batch.set(docRef, { ...item, timestamp: new Date() });
       });
       await batch.commit();
-      toast({ title: 'Berhasil', description: '22 Data kalibrasi berhasil di-seed.' });
+      toast({ title: 'Berhasil', description: `${initialData.length} Data kalibrasi berhasil diperbarui.` });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Gagal melakukan seed data.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Gagal melakukan pembaruan data.' });
     } finally {
       setSeeding(false);
     }
@@ -165,6 +198,8 @@ export default function CalibrationClient() {
 
   const openAddDialog = () => {
     setEditingId(null);
+    setCertFile(null);
+    setCertYear(new Date().getFullYear().toString());
     form.reset({
       kategori: 'FLOW METER',
       namaPeralatan: '',
@@ -173,6 +208,7 @@ export default function CalibrationClient() {
       kondisiFisik: 'Berfungsi',
       teraTerakhir: format(new Date(), 'yyyy-MM-dd'),
       teraBerikutnya: format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd'),
+      usulanProgram: 'KALIBRASI EKSTERNAL',
       keterangan: '',
     });
     setIsDialogOpen(true);
@@ -180,25 +216,25 @@ export default function CalibrationClient() {
 
   const getReminder = (teraBerikutnya: string) => {
     if (!teraBerikutnya) return { text: '-', color: 'text-gray-900' };
-    
+
     const nextDate = startOfDay(new Date(teraBerikutnya));
     const today = startOfDay(new Date());
     const diffDays = differenceInDays(nextDate, today);
 
     if (diffDays < 0) {
-      return { 
-        text: `Lewat ${Math.abs(diffDays)} hari`, 
+      return {
+        text: `Lewat ${Math.abs(diffDays)} hari`,
         color: 'text-red-600 font-bold'
       };
     } else if (diffDays === 0) {
-      return { 
-        text: 'Hari ini', 
-        color: 'text-orange-600 font-bold' 
+      return {
+        text: 'Hari ini',
+        color: 'text-orange-600 font-bold'
       };
     } else {
-      return { 
-        text: `${diffDays} hari lagi`, 
-        color: 'text-green-600' 
+      return {
+        text: `${diffDays} hari lagi`,
+        color: 'text-green-600'
       };
     }
   };
@@ -212,9 +248,150 @@ export default function CalibrationClient() {
     }
   };
 
-  // Grouping & Filtering
-  const filteredRecords = records?.filter(record => 
-    record.namaPeralatan.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const generatePDF = async () => {
+    if (!records || records.length === 0) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Tidak ada data untuk dicetak.' });
+      return;
+    }
+
+    // Dynamic import to avoid Next.js SSR issues with browser objects
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
+    let logoBase64: string | null = null;
+    try {
+      const response = await fetch('/logo-pertamina.png');
+      const blob = await response.blob();
+      logoBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.error("Failed to load logo", e);
+    }
+
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`DAFTAR KALIBRASI DAN TERA PERALATAN ${new Date().getFullYear()}`, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', doc.internal.pageSize.getWidth() - 50, 5, 40, 10);
+    }
+
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const currentMonth = monthNames[new Date().getMonth()];
+    doc.setFontSize(10);
+    doc.text(`AFT : DEO - ${currentMonth}`, 14, 25);
+
+    const tableData: any[] = [];
+    categories.forEach((cat, catIdx) => {
+      tableData.push([
+        { content: String.fromCharCode(65 + catIdx), styles: { fontStyle: 'bold', fillColor: [230, 240, 250], textColor: [15, 23, 42] } },
+        { content: cat, styles: { fontStyle: 'bold', fillColor: [230, 240, 250], textColor: [15, 23, 42] } },
+        { content: '', styles: { fillColor: [230, 240, 250] } },
+        { content: '', styles: { fillColor: [230, 240, 250] } },
+        { content: '', styles: { fillColor: [230, 240, 250] } },
+        { content: '', styles: { fillColor: [230, 240, 250] } },
+        { content: '', styles: { fillColor: [230, 240, 250] } },
+        { content: '', styles: { fillColor: [230, 240, 250] } }
+      ]);
+
+      groupedRecords[cat].forEach((record, idx) => {
+        const teraT = record.teraTerakhir ? format(new Date(record.teraTerakhir), 'dd-MMM-yy') : '';
+        const teraB = record.teraBerikutnya ? format(new Date(record.teraBerikutnya), 'dd-MMM-yy') : '';
+        const ket = ''; // Dikosongkan sesuai permintaan
+        const namaPeralatan = record.noSeri ? `${record.namaPeralatan}\nNo. Seri: ${record.noSeri}` : record.namaPeralatan;
+
+        tableData.push([
+          (idx + 1).toString(),
+          { content: namaPeralatan, isItem: true, nama: record.namaPeralatan, seri: record.noSeri },
+          record.tahunPemakaian || '',
+          record.kondisiFisik || '',
+          teraT,
+          teraB,
+          record.usulanProgram || 'KALIBRASI EKSTERNAL',
+          ket
+        ]);
+      });
+    });
+
+    autoTable(doc, {
+      startY: 32,
+      head: [['NO', 'NAMA PERALATAN', 'TH. PEMAKAIAN', 'KONDISI FISIK\n(BERFUNGSI/TIDAK BERFUNGSI)', 'Tera Terakhir', 'Tera Berikutnya', 'USULAN DAN PROGRAM', 'KETERANGAN']],
+      body: tableData,
+      theme: 'grid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 3,
+        lineColor: [200, 204, 208],
+        lineWidth: 0.1,
+        textColor: [0, 0, 0]
+      },
+      headStyles: {
+        fillColor: [15, 45, 110],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle',
+        lineColor: [15, 45, 110]
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 75 },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 35, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' },
+        5: { cellWidth: 25, halign: 'center' },
+        6: { cellWidth: 40, halign: 'center' },
+        7: { cellWidth: 35 }
+      },
+      willDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index === 1 && data.cell.raw && (data.cell.raw as any).isItem) {
+          data.cell.text = [];
+        }
+      },
+      didDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index === 1 && data.cell.raw && (data.cell.raw as any).isItem) {
+          const raw = data.cell.raw as any;
+          const textX = Number(data.cell.x || 0) + 3;
+          const textY = Number(data.cell.y || 0) + 5.5;
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(0, 0, 0);
+          doc.text(String(raw.nama || '-'), textX, textY);
+
+          if (raw.seri) {
+            doc.setFont('helvetica', 'normal');
+            doc.text(`No. Seri: ${raw.seri}`, textX, textY + 3.5);
+          }
+        }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 30;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.text("SF 234 - Daftar Kalibrasi & Tera Peralatan Rev.0 - DPPU DEO-Sorong", doc.internal.pageSize.getWidth() - 14, finalY + 15, { align: 'right' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text("Spv. Maintenance", doc.internal.pageSize.getWidth() - 35, finalY + 30, { align: 'center' });
+    doc.setLineWidth(0.5);
+    doc.line(doc.internal.pageSize.getWidth() - 60, finalY + 50, doc.internal.pageSize.getWidth() - 10, finalY + 50);
+    doc.text("Kiamnasmeithson", doc.internal.pageSize.getWidth() - 35, finalY + 54, { align: 'center' });
+
+    doc.save(`Kalibrasi_Tera_${currentMonth}_${new Date().getFullYear()}.pdf`);
+  };
+
+  const filteredRecords = records?.filter(record =>
+    record.namaPeralatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (record.keterangan && record.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -236,7 +413,6 @@ export default function CalibrationClient() {
 
   return (
     <div className="space-y-6">
-      {/* Alert Section */}
       {needsAttentionCount > 0 && (
         <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
           <Bell className="h-5 w-5 !text-red-600" />
@@ -253,7 +429,7 @@ export default function CalibrationClient() {
             <CardTitle className="text-2xl font-bold">Kalibrasi dan Tera Peralatan</CardTitle>
             <CardDescription>Manajemen data kalibrasi dan tera peralatan sarpras</CardDescription>
           </div>
-          
+
           <div className="flex w-full md:w-auto items-center gap-2">
             <div className="relative w-full md:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -264,17 +440,10 @@ export default function CalibrationClient() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
-            <Button onClick={() => window.print()} variant="outline" className="shrink-0 print:hidden">
-              <Printer className="mr-2 h-4 w-4" /> Cetak
-            </Button>
 
-            {records && records.length === 0 && (
-              <Button onClick={handleSeed} disabled={seeding} variant="secondary" className="shrink-0 print:hidden">
-                <Loader2 className={`h-4 w-4 mr-2 ${seeding ? 'animate-spin' : 'hidden'}`} />
-                {seeding ? 'Memproses...' : 'Seed Data'}
-              </Button>
-            )}
+            <Button onClick={generatePDF} variant="outline" className="shrink-0 print:hidden">
+              <Printer className="mr-2 h-4 w-4" /> Download PDF
+            </Button>
 
             <Button onClick={openAddDialog} className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 print:hidden">
               <Plus className="mr-2 h-4 w-4" /> Tambah
@@ -283,11 +452,11 @@ export default function CalibrationClient() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table className="min-w-[1000px]">
+            <Table className="min-w-[1200px]">
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead className="w-[50px] font-semibold text-center">No</TableHead>
-                  <TableHead className="min-w-[200px] font-semibold">Nama Peralatan & Keterangan</TableHead>
+                  <TableHead className="min-w-[300px] font-semibold">Nama Peralatan</TableHead>
                   <TableHead className="w-[150px] font-semibold text-center">Kondisi Fisik</TableHead>
                   <TableHead className="w-[150px] font-semibold text-center">Tera Terakhir</TableHead>
                   <TableHead className="w-[150px] font-semibold text-center">Tera Berikutnya</TableHead>
@@ -297,7 +466,7 @@ export default function CalibrationClient() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                   Array.from({ length: 5 }).map((_, i) => (
+                  Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell colSpan={7} className="p-4"><Skeleton className="h-10 w-full" /></TableCell>
                     </TableRow>
@@ -331,9 +500,6 @@ export default function CalibrationClient() {
                                 <div className="text-xs font-semibold text-slate-700 mt-0.5">No. Seri: {record.noSeri}</div>
                               )}
                               <div className="text-xs text-muted-foreground mt-0.5">Th. Pemakaian: {record.tahunPemakaian}</div>
-                              {record.keterangan && (
-                                <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{record.keterangan}</div>
-                              )}
                             </TableCell>
                             <TableCell className="text-center">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${record.kondisiFisik === 'Berfungsi' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -355,16 +521,27 @@ export default function CalibrationClient() {
                             </TableCell>
                             <TableCell className="text-right pr-4 print:hidden">
                               <div className="flex justify-end gap-2">
-                                <Button 
-                                  size="sm" 
+                                {record.certificates && record.certificates.length > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0 border-green-600 text-green-600 hover:bg-green-50"
+                                    title="Download Sertifikat"
+                                    onClick={() => setDownloadingRecord(record)}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
                                   className="h-8 px-2 bg-blue-600 hover:bg-blue-700 text-white"
                                   onClick={() => handleEdit(record)}
                                 >
                                   <Edit2 className="h-4 w-4 sm:mr-2" />
                                   <span className="hidden sm:inline">Update</span>
                                 </Button>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="destructive"
                                   className="h-8 px-2"
                                   onClick={() => setDeleteConfirmId(record.id)}
@@ -386,7 +563,6 @@ export default function CalibrationClient() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -404,18 +580,6 @@ export default function CalibrationClient() {
         </DialogContent>
       </Dialog>
 
-      {/* Print Footer / Signature Area */}
-      <div className="hidden print:block w-full text-black mt-8">
-        <p className="text-sm italic border-b border-black pb-1 w-fit mb-8">SF 234 - Daftar Kalibrasi & Tera Peralatan Rev.0 - DPPU DEO-Sorong</p>
-        <div className="flex justify-end mt-16 pr-12">
-          <div className="text-center">
-            <p className="font-bold mb-24">Spv. Maintenance</p>
-            <p className="font-bold underline decoration-1 underline-offset-4">Kiamnasmeithson</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -427,10 +591,18 @@ export default function CalibrationClient() {
                 <FormField control={form.control} name="kategori" render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-2">
                     <FormLabel>Kategori Peralatan</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Contoh: FLOW METER, PERALATAN LAIN" {...field} disabled={!!editingId} />
-                    </FormControl>
-                    <p className="text-[10px] text-muted-foreground mt-1">Ketikkan kategori, misal: FLOW METER, TANKI TIMBUN/REFUELLER, PERALATAN LAIN</p>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingId}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kategori peralatan" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="FLOW METER">FLOW METER</SelectItem>
+                        <SelectItem value="TANKI TIMBUN/REFUELLER">TANKI TIMBUN/REFUELLER</SelectItem>
+                        <SelectItem value="PERALATAN LAIN">PERALATAN LAIN</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -451,36 +623,6 @@ export default function CalibrationClient() {
                   </FormItem>
                 )} />
 
-                <FormField control={form.control} name="tahunPemakaian" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tahun Pemakaian</FormLabel>
-                    <FormControl><Input type="number" placeholder="Contoh: 2010" {...field} disabled={!!editingId} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="kondisiFisik" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kondisi Fisik</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Pilih kondisi" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="Berfungsi">Berfungsi</SelectItem>
-                        <SelectItem value="Tidak Berfungsi">Tidak Berfungsi</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="teraTerakhir" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tera Terakhir</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
                 <FormField control={form.control} name="teraBerikutnya" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tera Berikutnya</FormLabel>
@@ -489,13 +631,41 @@ export default function CalibrationClient() {
                   </FormItem>
                 )} />
 
-                <FormField control={form.control} name="keterangan" render={({ field }) => (
+                <FormField control={form.control} name="usulanProgram" render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-2">
-                    <FormLabel>Keterangan (Opsional)</FormLabel>
-                    <FormControl><Textarea placeholder="Tambahkan keterangan (opsional)" {...field} className="resize-none" /></FormControl>
+                    <FormLabel>Usulan dan Program</FormLabel>
+                    <FormControl><Input placeholder="Contoh: KALIBRASI EKSTERNAL" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
+
+                {editingId && (
+                  <div className="col-span-1 md:col-span-2 border rounded-md p-4 bg-slate-50 space-y-4">
+                    <h4 className="font-semibold text-sm">Upload Sertifikat Kalibrasi</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <FormLabel>Tahun Sertifikat</FormLabel>
+                        <Input 
+                          type="text" 
+                          value={certYear} 
+                          onChange={(e) => setCertYear(e.target.value)} 
+                          placeholder="Contoh: 2024"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <FormLabel>File Sertifikat</FormLabel>
+                        <Input 
+                          type="file" 
+                          onChange={(e) => setCertFile(e.target.files?.[0] || null)} 
+                          accept=".pdf,.jpg,.jpeg,.png"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Sertifikat akan diunggah saat Anda menyimpan perubahan. Jika Anda mengunggah sertifikat untuk tahun yang sama, file sebelumnya akan ditimpa.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="pt-4">
@@ -506,6 +676,35 @@ export default function CalibrationClient() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!downloadingRecord} onOpenChange={(open) => !open && setDownloadingRecord(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Download Sertifikat Kalibrasi</DialogTitle>
+            <DialogDescription>
+              Pilih tahun sertifikat kalibrasi yang ingin diunduh untuk <span className="font-semibold text-black">{downloadingRecord?.namaPeralatan}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 my-2 max-h-[60vh] overflow-y-auto pr-2">
+            {downloadingRecord?.certificates?.sort((a, b) => Number(b.year) - Number(a.year)).map((cert, idx) => (
+              <div key={idx} className="flex justify-between items-center p-3 border rounded-md hover:bg-slate-50 transition-colors">
+                <div className="overflow-hidden pr-2">
+                  <div className="font-semibold text-sm">Sertifikat Tahun {cert.year}</div>
+                  <div className="text-xs text-gray-500 truncate" title={cert.fileName}>{cert.fileName}</div>
+                </div>
+                <Button size="sm" onClick={() => window.open(cert.fileUrl, '_blank')} className="bg-green-600 hover:bg-green-700 shrink-0">
+                  <Download className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Download</span>
+                </Button>
+              </div>
+            ))}
+            {!downloadingRecord?.certificates?.length && (
+              <div className="text-center text-gray-500 py-4">Belum ada sertifikat yang diunggah.</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDownloadingRecord(null)}>Tutup</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
