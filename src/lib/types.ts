@@ -277,6 +277,7 @@ export interface MaintenanceChecklist {
   keterangan: string;
   hasilCeklish?: string;
   formUrl?: string; // For the uploaded form
+  sfFileUrl?: string; // For the blank SF template
   updatedAt?: Timestamp | string;
   updatedBy?: string;
 }
@@ -300,6 +301,7 @@ export interface CalibrationCertificate {
   year: string;
   fileUrl: string;
   fileName: string;
+  uploadedAt?: string;
 }
 
 export interface CalibrationRecord {

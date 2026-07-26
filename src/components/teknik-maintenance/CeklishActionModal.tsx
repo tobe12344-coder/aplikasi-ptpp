@@ -28,6 +28,8 @@ const calculateNextInspection = (currentDate: Date, period: string): Date => {
     case '3 Monthly': return addMonths(currentDate, 3);
     case 'Six Monthly': return addMonths(currentDate, 6);
     case 'Yearly': return addYears(currentDate, 1);
+    case '3 Yearly': return addYears(currentDate, 3);
+    case '5 Yearly': return addYears(currentDate, 5);
     case 'Opr. Hours': return addMonths(currentDate, 1); // fallback estimation
     default: return addDays(currentDate, 7);
   }

@@ -1,31 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import type { MaintenanceChecklist } from '@/lib/types';
 
-interface AddCeklishModalProps {
+interface EditCeklishModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  item: MaintenanceChecklist;
 }
 
-export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalProps) {
+export default function EditCeklishModal({ isOpen, setIsOpen, item }: EditCeklishModalProps) {
   const { toast } = useToast();
-  const [no, setNo] = useState('');
-  const [item, setItem] = useState('');
-  const [sf, setSf] = useState('');
-  const [period, setPeriod] = useState('');
+  const [no, setNo] = useState(item.no);
+  const [itemName, setItemName] = useState(item.item);
+  const [sf, setSf] = useState(item.sf);
+  const [period, setPeriod] = useState(item.period);
   const [sfFile, setSfFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setNo(item.no);
+      setItemName(item.item);
+      setSf(item.sf);
+      setPeriod(item.period);
+      setSfFile(null);
+    }
+  }, [isOpen, item]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!no || !item || !sf || !period) {
+    if (!item.id || !no || !itemName || !sf || !period) {
       toast({ variant: 'destructive', title: 'Error', description: 'Harap isi semua kolom wajib' });
       return;
     }
@@ -34,8 +46,9 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
     try {
       const db = getFirestore();
       const storage = getStorage();
-      let sfFileUrl = null;
+      let sfFileUrl = item.sfFileUrl || null;
 
+      // If user uploads a new file, override the old one
       if (sfFile) {
         const fileExt = sfFile.name.split('.').pop();
         const fileName = `maintenance_templates/${sf}_${new Date().getTime()}.${fileExt}`;
@@ -44,32 +57,22 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
         sfFileUrl = await getDownloadURL(sRef);
       }
       
-      const colRef = collection(db, 'maintenance_checklists');
+      const docRef = doc(db, 'maintenance_checklists', item.id);
       
-      await addDoc(colRef, {
+      await updateDoc(docRef, {
         no,
-        item,
+        item: itemName,
         sf,
         period,
-        lastInspection: '',
-        nextInspection: '',
-        status: 'Pending',
-        keterangan: '',
-        sfFileUrl: sfFileUrl || null,
-        createdAt: new Date().toISOString()
+        sfFileUrl,
+        updatedAt: new Date().toISOString()
       });
 
-      toast({ title: 'Berhasil', description: 'Item baru berhasil ditambahkan' });
+      toast({ title: 'Berhasil', description: 'Item berhasil diperbarui' });
       setIsOpen(false);
-      // Reset form
-      setNo('');
-      setItem('');
-      setSf('');
-      setPeriod('');
-      setSfFile(null);
     } catch (error: any) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Gagal menambahkan data: ' + error.message });
+      toast({ variant: 'destructive', title: 'Error', description: 'Gagal memperbarui data: ' + error.message });
     } finally {
       setIsLoading(false);
     }
@@ -79,17 +82,17 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Tambah Item Checklist</DialogTitle>
+          <DialogTitle>Edit Item Checklist</DialogTitle>
           <DialogDescription>
-            Masukkan detail sarana/prasarana baru untuk maintenance.
+            Ubah detail sarana/prasarana atau perbarui file SF template.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="no">Nomor Urut</Label>
+            <Label htmlFor="edit-no">Nomor Urut</Label>
             <Input 
-              id="no" 
+              id="edit-no" 
               value={no}
               onChange={(e) => setNo(e.target.value)}
               placeholder="Contoh: 18"
@@ -98,20 +101,20 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="item">Nama Item</Label>
+            <Label htmlFor="edit-item">Nama Item</Label>
             <Input 
-              id="item" 
-              value={item}
-              onChange={(e) => setItem(e.target.value)}
+              id="edit-item" 
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
               placeholder="Contoh: Hose End Strainer"
               required 
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sf">Kode SF (Form)</Label>
+            <Label htmlFor="edit-sf">Kode SF (Form)</Label>
             <Input 
-              id="sf" 
+              id="edit-sf" 
               value={sf}
               onChange={(e) => setSf(e.target.value)}
               placeholder="Contoh: SF-205"
@@ -120,7 +123,7 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="period">Periode Maintenance</Label>
+            <Label htmlFor="edit-period">Periode Maintenance</Label>
             <Select value={period} onValueChange={setPeriod} required>
               <SelectTrigger>
                 <SelectValue placeholder="Pilih Periode" />
@@ -140,15 +143,20 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sfFile">Upload File SF Template (Opsional)</Label>
+            <Label htmlFor="edit-sfFile">Upload File SF Template Baru (Opsional)</Label>
             <Input 
-              id="sfFile" 
+              id="edit-sfFile" 
               type="file" 
               accept=".pdf,image/*" 
               onChange={(e) => setSfFile(e.target.files?.[0] || null)} 
             />
             <p className="text-xs text-gray-500">
-              Format: PDF atau Gambar. Template ini akan menggantikan form cetak bawaan.
+              Format: PDF atau Gambar. Biarkan kosong jika tidak ingin mengubah template saat ini.
+              {item.sfFileUrl && (
+                <span className="block mt-1 text-green-600 font-medium">
+                  Status: Template kustom sudah ada.
+                </span>
+              )}
             </p>
           </div>
 
@@ -163,7 +171,7 @@ export default function AddCeklishModal({ isOpen, setIsOpen }: AddCeklishModalPr
                   Menyimpan...
                 </>
               ) : (
-                'Simpan Data'
+                'Simpan Perubahan'
               )}
             </Button>
           </DialogFooter>

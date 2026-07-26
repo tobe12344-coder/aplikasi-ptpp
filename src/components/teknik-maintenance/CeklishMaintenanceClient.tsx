@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Printer, FileEdit, Bell, Search, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import { Printer, FileEdit, Bell, Search, RefreshCw, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, deleteDoc, type CollectionReference } from 'firebase/firestore';
 import type { MaintenanceChecklist } from '@/lib/types';
@@ -16,9 +16,11 @@ import { parse, differenceInDays, isBefore, isToday, parseISO, format } from 'da
 import { id } from 'date-fns/locale';
 import CeklishActionModal from './CeklishActionModal';
 import AddCeklishModal from './AddCeklishModal';
+import EditCeklishModal from './EditCeklishModal';
 import PrintBlankForm from './PrintBlankForm';
-import PrintAllChecklists from './PrintAllChecklists';
 import Link from 'next/link';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -51,8 +53,8 @@ export default function CeklishMaintenanceClient() {
   const [selectedItem, setSelectedItem] = useState<MaintenanceChecklist | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [itemToPrint, setItemToPrint] = useState<MaintenanceChecklist | null>(null);
-  const [isPrintingAll, setIsPrintingAll] = useState(false);
 
   const query = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -144,15 +146,89 @@ export default function CeklishMaintenanceClient() {
   }).length || 0;
 
 
-  const handlePrintAll = () => {
-    setIsPrintingAll(true);
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setIsPrintingAll(false), 1000);
-    }, 100);
+  const getBase64ImageFromURL = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = error => reject(error);
+      img.src = url;
+    });
+  };
+
+  const handlePrintAll = async () => {
+    if (!data) return;
+    const doc = new jsPDF('landscape');
+    
+    try {
+      const logoBase64 = await getBase64ImageFromURL('/logo-pertamina.png');
+      doc.addImage(logoBase64, 'PNG', doc.internal.pageSize.getWidth() - 60, 10, 45, 12);
+    } catch (e) {
+      console.warn('Gagal memuat logo', e);
+    }
+    
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AFT-DEO SORONG', doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.text('REKAP HASIL INSPEKSI / MAINTENANCE SARPRAS', doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Tanggal Cetak: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+
+    const sortedData = [...data].sort((a, b) => parseInt(a.no) - parseInt(b.no));
+    
+    const tableBody = sortedData.map(item => [
+      item.no,
+      item.item,
+      item.sf,
+      item.period,
+      item.lastInspection ? format(parseISO(item.lastInspection), 'dd/MM/yyyy') : '-',
+      item.nextInspection ? format(parseISO(item.nextInspection), 'dd/MM/yyyy') : '-',
+      item.status,
+      item.keterangan || '-'
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['No', 'Item Pekerjaan', 'Form (SF)', 'Periode', 'Last Insp', 'Next Insp', 'Status', 'Keterangan']],
+      body: tableBody,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      bodyStyles: { textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        4: { halign: 'center', cellWidth: 25 },
+        5: { halign: 'center', cellWidth: 25 },
+        6: { halign: 'center', cellWidth: 25 },
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 35;
+    
+    doc.text(`Sorong, ${format(new Date(), 'dd MMMM yyyy', { locale: id })}`, doc.internal.pageSize.getWidth() - 20, finalY + 20, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('Mengetahui', doc.internal.pageSize.getWidth() - 40, finalY + 26, { align: 'center' });
+    
+    doc.save(`Rekap_Maintenance_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
   };
 
   const handlePrint = (item: MaintenanceChecklist) => {
+    if (item.sfFileUrl) {
+      window.open(item.sfFileUrl, '_blank');
+      return;
+    }
     setItemToPrint(item);
     setTimeout(() => {
       window.print();
@@ -171,12 +247,7 @@ export default function CeklishMaintenanceClient() {
     }
   };
 
-  if (isPrintingAll && data) {
-    return <PrintAllChecklists data={data} />;
-  }
-
   if (itemToPrint) {
-
     return <PrintBlankForm item={itemToPrint} />;
   }
 
@@ -225,7 +296,7 @@ export default function CeklishMaintenanceClient() {
               </>
             )}
 
-            <Link href="/sarpras/ceklish-maintenance/history">
+            <Link href="/ceklish-maintenance/history">
               <Button variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
                 <History className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Riwayat</span>
@@ -326,46 +397,46 @@ export default function CeklishMaintenanceClient() {
                         </TableCell>
                         <TableCell className="text-right pr-4">
                           <div className="flex justify-end gap-2">
-                            {row.formUrl && (
-                              <a href={row.formUrl} target="_blank" rel="noopener noreferrer">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-8 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                                  title="Lihat Hasil Inspeksi"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                                </Button>
-                              </a>
-                            )}
                             <Button 
-                              size="sm" 
+                              size="icon" 
                               variant="outline" 
-                              className="h-8 px-2"
+                              className="h-8 w-8"
                               onClick={() => handlePrint(row)}
+                              title="Cetak"
                             >
-                              <Printer className="h-4 w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Cetak</span>
+                              <Printer className="h-4 w-4" />
                             </Button>
                             <Button 
-                              size="sm" 
-                              className="h-8 px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                              size="icon" 
+                              variant="outline" 
+                              className="h-8 w-8 border-amber-200 text-amber-700 hover:bg-amber-50"
+                              onClick={() => {
+                                setSelectedItem(row);
+                                setIsEditModalOpen(true);
+                              }}
+                              title="Edit Item"
+                            >
+                              <FileEdit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              className="h-8 w-8 bg-blue-600 hover:bg-blue-700 text-white"
                               onClick={() => {
                                 setSelectedItem(row);
                                 setIsModalOpen(true);
                               }}
+                              title="Isi Hasil"
                             >
-                              <FileEdit className="h-4 w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Update</span>
+                              <CheckCircle2 className="h-4 w-4" />
                             </Button>
                             <Button 
-                              size="sm" 
+                              size="icon" 
                               variant="destructive"
-                              className="h-8 px-2"
+                              className="h-8 w-8"
                               onClick={() => handleDelete(row.id)}
+                              title="Hapus"
                             >
-                              <Trash2 className="h-4 w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Hapus</span>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -379,11 +450,20 @@ export default function CeklishMaintenanceClient() {
         </CardContent>
       </Card>
 
-      {/* Action Modal */}
+      {/* Action Modal (Update Hasil) */}
       {selectedItem && (
         <CeklishActionModal 
           isOpen={isModalOpen}
           setIsOpen={setIsModalOpen}
+          item={selectedItem}
+        />
+      )}
+
+      {/* Edit Modal (Edit Metadata Item & SF Template) */}
+      {selectedItem && (
+        <EditCeklishModal
+          isOpen={isEditModalOpen}
+          setIsOpen={setIsEditModalOpen}
           item={selectedItem}
         />
       )}

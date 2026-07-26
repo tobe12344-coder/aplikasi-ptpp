@@ -111,13 +111,18 @@ export default function CalibrationClient() {
       let certificates = editingId ? (records?.find(r => r.id === editingId)?.certificates || []) : [];
       let newCertificates = [...certificates];
 
-      if (editingId && certFile && storage && certYear) {
-        const fileRef = ref(storage, `calibrations/${editingId}/${certYear}_${certFile.name}`);
+      if (editingId && certFile && storage) {
+        const timestamp = new Date().getTime();
+        const fileRef = ref(storage, `calibrations/${editingId}/${timestamp}_${certFile.name}`);
         await uploadBytes(fileRef, certFile);
         const fileUrl = await getDownloadURL(fileRef);
         
-        newCertificates = newCertificates.filter(c => c.year !== certYear);
-        newCertificates.push({ year: certYear, fileUrl, fileName: certFile.name });
+        newCertificates.push({ 
+          year: certYear || new Date().getFullYear().toString(), 
+          fileUrl, 
+          fileName: certFile.name,
+          uploadedAt: new Date().toISOString()
+        });
       }
 
       const payload = { ...values, certificates: newCertificates };
@@ -320,7 +325,7 @@ export default function CalibrationClient() {
 
     autoTable(doc, {
       startY: 32,
-      head: [['NO', 'NAMA PERALATAN', 'TH. PEMAKAIAN', 'KONDISI FISIK\n(BERFUNGSI/TIDAK BERFUNGSI)', 'Tera Terakhir', 'Tera Berikutnya', 'USULAN DAN PROGRAM', 'KETERANGAN']],
+      head: [['NO', 'NAMA PERALATAN', 'TH. PEMAKAIAN', 'KONDISI FISIK\n(BERFUNGSI/TIDAK BERFUNGSI)', 'Tera Terakhir', 'Tanggal Kalibrasi/Tera', 'USULAN DAN PROGRAM', 'KETERANGAN']],
       body: tableData,
       theme: 'grid',
       styles: {
@@ -459,7 +464,7 @@ export default function CalibrationClient() {
                   <TableHead className="min-w-[300px] font-semibold">Nama Peralatan</TableHead>
                   <TableHead className="w-[150px] font-semibold text-center">Kondisi Fisik</TableHead>
                   <TableHead className="w-[150px] font-semibold text-center">Tera Terakhir</TableHead>
-                  <TableHead className="w-[150px] font-semibold text-center">Tera Berikutnya</TableHead>
+                  <TableHead className="w-[150px] font-semibold text-center">Tanggal Kalibrasi/Tera</TableHead>
                   <TableHead className="w-[150px] font-semibold text-center text-red-600 print:text-black">Reminder</TableHead>
                   <TableHead className="w-[200px] font-semibold text-right pr-6 print:hidden">Aksi</TableHead>
                 </TableRow>
@@ -623,9 +628,43 @@ export default function CalibrationClient() {
                   </FormItem>
                 )} />
 
+                <FormField control={form.control} name="tahunPemakaian" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tahun Pemakaian</FormLabel>
+                    <FormControl><Input placeholder="Contoh: 2024" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="kondisiFisik" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kondisi Fisik</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kondisi" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Berfungsi">Berfungsi</SelectItem>
+                        <SelectItem value="Tidak Berfungsi">Tidak Berfungsi</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="teraTerakhir" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tera Terakhir</FormLabel>
+                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
                 <FormField control={form.control} name="teraBerikutnya" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tera Berikutnya</FormLabel>
+                    <FormLabel>Tanggal Kalibrasi/Tera</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -642,16 +681,7 @@ export default function CalibrationClient() {
                 {editingId && (
                   <div className="col-span-1 md:col-span-2 border rounded-md p-4 bg-slate-50 space-y-4">
                     <h4 className="font-semibold text-sm">Upload Sertifikat Kalibrasi</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <FormLabel>Tahun Sertifikat</FormLabel>
-                        <Input 
-                          type="text" 
-                          value={certYear} 
-                          onChange={(e) => setCertYear(e.target.value)} 
-                          placeholder="Contoh: 2024"
-                        />
-                      </div>
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <FormLabel>File Sertifikat</FormLabel>
                         <Input 
@@ -662,7 +692,7 @@ export default function CalibrationClient() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Sertifikat akan diunggah saat Anda menyimpan perubahan. Jika Anda mengunggah sertifikat untuk tahun yang sama, file sebelumnya akan ditimpa.
+                      Sertifikat akan diunggah saat Anda menyimpan perubahan. Semua riwayat sertifikat akan tersimpan dan dapat didownload.
                     </p>
                   </div>
                 )}
@@ -687,10 +717,17 @@ export default function CalibrationClient() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 my-2 max-h-[60vh] overflow-y-auto pr-2">
-            {downloadingRecord?.certificates?.sort((a, b) => Number(b.year) - Number(a.year)).map((cert, idx) => (
+            {downloadingRecord?.certificates?.sort((a, b) => {
+              if (a.uploadedAt && b.uploadedAt) {
+                return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+              }
+              return Number(b.year) - Number(a.year);
+            }).map((cert, idx) => (
               <div key={idx} className="flex justify-between items-center p-3 border rounded-md hover:bg-slate-50 transition-colors">
                 <div className="overflow-hidden pr-2">
-                  <div className="font-semibold text-sm">Sertifikat Tahun {cert.year}</div>
+                  <div className="font-semibold text-sm">
+                    {cert.uploadedAt ? `Sertifikat (${format(new Date(cert.uploadedAt), 'dd MMM yyyy, HH:mm')})` : `Sertifikat Tahun ${cert.year}`}
+                  </div>
                   <div className="text-xs text-gray-500 truncate" title={cert.fileName}>{cert.fileName}</div>
                 </div>
                 <Button size="sm" onClick={() => window.open(cert.fileUrl, '_blank')} className="bg-green-600 hover:bg-green-700 shrink-0">

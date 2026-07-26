@@ -17,6 +17,7 @@ import { id } from 'date-fns/locale';
 
 export default function MaintenanceHistoryClient() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
   const [itemToPrint, setItemToPrint] = useState<MaintenanceHistory | null>(null);
   const firestore = useFirestore();
 
@@ -32,6 +33,10 @@ export default function MaintenanceHistoryClient() {
 
 
   const handlePrint = (item: MaintenanceHistory) => {
+    if (item.formUrl) {
+      window.open(item.formUrl, '_blank');
+      return;
+    }
     setItemToPrint(item);
     setTimeout(() => {
       window.print();
@@ -39,10 +44,11 @@ export default function MaintenanceHistoryClient() {
     }, 100);
   };
 
-  const filteredData = data?.filter(item =>
-    item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.sf.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = data?.filter(item => {
+    const matchSearch = item.item.toLowerCase().includes(searchTerm.toLowerCase()) || item.sf.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchMonth = filterMonth ? item.inspectionDate?.startsWith(filterMonth) : true;
+    return matchSearch && matchMonth;
+  });
 
 
   if (itemToPrint) {
@@ -68,6 +74,13 @@ export default function MaintenanceHistoryClient() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <Input
+              type="month"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="w-auto"
+              title="Filter Bulan"
+            />
           </div>
         </CardHeader>
 
@@ -130,26 +143,15 @@ export default function MaintenanceHistoryClient() {
                       </TableCell>
                       <TableCell className="text-right pr-4">
                         <div className="flex justify-end gap-2">
-                          {row.formUrl && (
-                            <a href={row.formUrl} target="_blank" rel="noopener noreferrer">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                                title="Lihat Lampiran/Form"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                              </Button>
-                            </a>
-                          )}
                           <Button
                             size="sm"
                             variant="outline"
                             className="h-8 px-2"
                             onClick={() => handlePrint(row)}
+                            title="Cetak Hasil Inspeksi"
                           >
                             <Printer className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Cetak PDF</span>
+                            <span className="hidden sm:inline">Cetak Hasil Inspeksi</span>
                           </Button>
                         </div>
                       </TableCell>
