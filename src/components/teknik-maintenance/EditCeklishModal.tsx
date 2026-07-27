@@ -9,6 +9,23 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'fire
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { MaintenanceChecklist } from '@/lib/types';
+import { addDays, addMonths, addYears, format } from 'date-fns';
+
+const calculateNextInspection = (currentDate: Date, period: string): Date => {
+  const p = period?.trim().toLowerCase() || '';
+  switch (p) {
+    case 'daily': return addDays(currentDate, 1);
+    case 'weekly': return addDays(currentDate, 7);
+    case 'monthly': return addMonths(currentDate, 1);
+    case '3 monthly': return addMonths(currentDate, 3);
+    case 'six monthly': return addMonths(currentDate, 6);
+    case 'yearly': return addYears(currentDate, 1);
+    case '3 yearly': return addYears(currentDate, 3);
+    case '5 yearly': return addYears(currentDate, 5);
+    case 'opr. hours': return addMonths(currentDate, 1);
+    default: return addDays(currentDate, 7);
+  }
+};
 
 interface EditCeklishModalProps {
   isOpen: boolean;
@@ -59,12 +76,18 @@ export default function EditCeklishModal({ isOpen, setIsOpen, item }: EditCeklis
       
       const docRef = doc(db, 'maintenance_checklists', item.id);
       
+      let nextInspection = item.nextInspection;
+      if (item.lastInspection && period !== item.period) {
+        nextInspection = format(calculateNextInspection(new Date(item.lastInspection), period), 'yyyy-MM-dd');
+      }
+
       await updateDoc(docRef, {
         no,
         item: itemName,
         sf,
         period,
         sfFileUrl,
+        nextInspection,
         updatedAt: new Date().toISOString()
       });
 

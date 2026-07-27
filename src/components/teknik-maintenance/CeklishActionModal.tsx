@@ -21,16 +21,17 @@ interface CeklishActionModalProps {
 }
 
 const calculateNextInspection = (currentDate: Date, period: string): Date => {
-  switch (period) {
-    case 'Daily': return addDays(currentDate, 1);
-    case 'Weekly': return addDays(currentDate, 7);
-    case 'Monthly': return addMonths(currentDate, 1);
-    case '3 Monthly': return addMonths(currentDate, 3);
-    case 'Six Monthly': return addMonths(currentDate, 6);
-    case 'Yearly': return addYears(currentDate, 1);
-    case '3 Yearly': return addYears(currentDate, 3);
-    case '5 Yearly': return addYears(currentDate, 5);
-    case 'Opr. Hours': return addMonths(currentDate, 1); // fallback estimation
+  const p = period?.trim().toLowerCase() || '';
+  switch (p) {
+    case 'daily': return addDays(currentDate, 1);
+    case 'weekly': return addDays(currentDate, 7);
+    case 'monthly': return addMonths(currentDate, 1);
+    case '3 monthly': return addMonths(currentDate, 3);
+    case 'six monthly': return addMonths(currentDate, 6);
+    case 'yearly': return addYears(currentDate, 1);
+    case '3 yearly': return addYears(currentDate, 3);
+    case '5 yearly': return addYears(currentDate, 5);
+    case 'opr. hours': return addMonths(currentDate, 1);
     default: return addDays(currentDate, 7);
   }
 };

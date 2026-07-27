@@ -12,7 +12,7 @@ import { collection, doc, writeBatch, deleteDoc, type CollectionReference } from
 import type { MaintenanceChecklist } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { parse, differenceInDays, isBefore, isToday, parseISO, format } from 'date-fns';
+import { parse, differenceInDays, isBefore, isToday, parseISO, format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
 import CeklishActionModal from './CeklishActionModal';
 import AddCeklishModal from './AddCeklishModal';
@@ -44,6 +44,16 @@ const initialData: Omit<MaintenanceChecklist, 'id'>[] = [
   { no: '16', item: 'Overfill Wet Test', sf: 'SF-256', period: '3 Monthly', lastInspection: '2026-03-03', nextInspection: '2026-06-01', status: 'Complete', keterangan: '' },
   { no: '17', item: 'Pressure & Surge Controller Test', sf: 'SF-221', period: '3 Monthly', lastInspection: '2026-04-01', nextInspection: '2026-06-30', status: 'Complete', keterangan: '' },
 ];
+
+const safeParseISO = (dateStr: string | undefined | null) => {
+  if (!dateStr || dateStr === 'Invalid Date') return null;
+  try {
+    const d = parseISO(dateStr);
+    return isValid(d) ? d : null;
+  } catch {
+    return null;
+  }
+};
 
 export default function CeklishMaintenanceClient() {
   const firestore = useFirestore();
@@ -93,7 +103,8 @@ export default function CeklishMaintenanceClient() {
       const today = new Date();
       const overdueItems = data.filter(item => {
         if (!item.nextInspection) return false;
-        const nextDate = parseISO(item.nextInspection);
+        const nextDate = safeParseISO(item.nextInspection);
+        if (!nextDate) return item.status === 'Check';
         return item.status === 'Check' || isBefore(nextDate, today) || isToday(nextDate);
       });
 
@@ -116,7 +127,8 @@ export default function CeklishMaintenanceClient() {
   const calculateReminder = (nextDateStr: string) => {
     if (!nextDateStr) return { text: '-', color: 'text-gray-500' };
     try {
-      const nextDate = parseISO(nextDateStr);
+      const nextDate = safeParseISO(nextDateStr);
+      if (!nextDate) return { text: '-', color: 'text-gray-500' };
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time for accurate day difference
 
@@ -141,7 +153,8 @@ export default function CeklishMaintenanceClient() {
 
   const needsAttentionCount = data?.filter(item => {
     if (!item.nextInspection || item.status === 'Check') return true;
-    const nextDate = parseISO(item.nextInspection);
+    const nextDate = safeParseISO(item.nextInspection);
+    if (!nextDate) return true;
     return isBefore(nextDate, new Date()) || isToday(nextDate);
   }).length || 0;
 
@@ -193,8 +206,8 @@ export default function CeklishMaintenanceClient() {
       item.item,
       item.sf,
       item.period,
-      item.lastInspection ? format(parseISO(item.lastInspection), 'dd/MM/yyyy') : '-',
-      item.nextInspection ? format(parseISO(item.nextInspection), 'dd/MM/yyyy') : '-',
+      safeParseISO(item.lastInspection) ? format(safeParseISO(item.lastInspection)!, 'dd/MM/yyyy') : '-',
+      safeParseISO(item.nextInspection) ? format(safeParseISO(item.nextInspection)!, 'dd/MM/yyyy') : '-',
       item.status,
       item.keterangan || '-'
     ]);
@@ -347,8 +360,8 @@ export default function CeklishMaintenanceClient() {
                     // Hitung status otomatis jika next inspection lewat atau hari ini
                     let displayStatus = row.status;
                     if (row.nextInspection) {
-                      const nextDate = parseISO(row.nextInspection);
-                      if (isBefore(nextDate, new Date()) || isToday(nextDate)) {
+                      const nextDate = safeParseISO(row.nextInspection);
+                      if (nextDate && (isBefore(nextDate, new Date()) || isToday(nextDate))) {
                         displayStatus = 'Check';
                       } else {
                         displayStatus = 'Complete';
@@ -367,12 +380,12 @@ export default function CeklishMaintenanceClient() {
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">
-                            {row.lastInspection ? format(parseISO(row.lastInspection), 'dd MMM yyyy', { locale: id }) : '-'}
+                            {safeParseISO(row.lastInspection) ? format(safeParseISO(row.lastInspection)!, 'dd MMM yyyy', { locale: id }) : '-'}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">
-                            {row.nextInspection ? format(parseISO(row.nextInspection), 'dd MMM yyyy', { locale: id }) : '-'}
+                            {safeParseISO(row.nextInspection) ? format(safeParseISO(row.nextInspection)!, 'dd MMM yyyy', { locale: id }) : '-'}
                           </div>
                           <div className={`text-xs ${reminderObj.color}`}>
                             {reminderObj.text}
