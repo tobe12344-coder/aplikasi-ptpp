@@ -1,18 +1,19 @@
-
-import BackButton from '@/components/common/BackButton';
 import Header from '@/components/common/Header';
-import TeknikModuleClient from '@/components/teknik-maintenance/TeknikModuleClient';
+import LaporanKerusakanClient from '@/components/teknik-maintenance/LaporanKerusakanClient';
 
-export default function TeknikMaintenancePage() {
+export default function Home() {
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
-      <div className="p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
-
-          <TeknikModuleClient />
+      <div className="p-4 md:p-8 flex-1">
+        <div className="container mx-auto max-w-7xl mt-4">
+          <div className="mb-8">
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Laporan Kerusakan Sarpras</h1>
+            <p className="text-slate-500 mt-2 font-medium">Monitoring pelaporan kerusakan sarana dan prasarana.</p>
+          </div>
+          <LaporanKerusakanClient />
         </div>
       </div>
-    </>
+    </div>
   );
 }

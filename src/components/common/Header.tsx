@@ -31,7 +31,7 @@ export default function Header() {
     <header className="pertamina-header-gradient text-white shadow-lg p-4 flex justify-between items-center">
       <div>
         <h1 className="text-xl md:text-2xl font-bold">
-          DIGITAL MONITORING MAINTENANCE
+          APLIKASI PTPP (LAPORAN KERUSAKAN)
         </h1>
       </div>
       {user && !loading && (
