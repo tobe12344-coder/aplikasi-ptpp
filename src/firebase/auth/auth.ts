@@ -45,7 +45,7 @@ export async function loginWithGoogle(auth: Auth) {
       email: user.email,
       displayName: user.displayName || '',
       photoURL: user.photoURL || '',
-      role: 'admin',
+      role: 'pelapor',
       status: 'approved',
       createdAt: new Date().toISOString(),
     });

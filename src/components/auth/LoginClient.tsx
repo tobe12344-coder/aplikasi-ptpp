@@ -31,7 +31,12 @@ export default function LoginClient() {
       let errMsg = 'Gagal masuk dengan Google. Pastikan email Anda valid dan koneksi stabil.';
       
       if (err.message === 'NOT_REGISTERED') {
-        errMsg = 'Email Anda belum terdaftar. Silakan hubungi Administrator untuk mendaftarkan email Anda.';
+        toast({
+          title: 'Dialihkan',
+          description: 'Email Anda belum terdaftar. Anda dialihkan ke halaman pelaporan tamu.',
+        });
+        router.push('/lapor');
+        return;
       } else if (err.code === 'auth/popup-closed-by-user') {
         errMsg = 'Login dibatalkan oleh pengguna.';
       }

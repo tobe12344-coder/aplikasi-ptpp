@@ -1,12 +1,11 @@
 /**
- * @fileoverview Firestore Security Rules for AFTDEO Sorong.
- * @version 3
+ * @fileoverview Firestore Security Rules for Aplikasi Laporan Kerusakan.
+ * @version 4
  *
  * @security-model
  * - Role-based access control (RBAC) menggunakan Firestore document /users/{uid}.
- * - User tidak bisa mengubah role atau status sendiri.
+ * - Hanya ada Admin dan Pelapor (User biasa).
  * - Semua data memerlukan autentikasi untuk dibaca.
- * - Hanya admin yang bisa menghapus user profile.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -24,20 +23,8 @@ service cloud.firestore {
       return isSignedIn() && getUserData().status == 'approved';
     }
 
-    function hasRole(role) {
-      return isActiveUser() && getUserData().role == role;
-    }
-
     function isAdmin() {
-      return hasRole('admin');
-    }
-
-    function isSecurity() {
-      return hasRole('security');
-    }
-
-    function isTeknik() {
-      return hasRole('teknik');
+      return isActiveUser() && getUserData().role == 'admin';
     }
 
     function isOwner(userId) {
@@ -48,282 +35,39 @@ service cloud.firestore {
     // WHITELIST EMAILS
     // =========================================================================
     match /allowed_emails/{emailId} {
-      // Siapapun boleh membaca (untuk cek login), tapi hanya admin yg bisa nambah/hapus
       allow read: if true;
       allow write: if isAdmin();
     }
 
-
     // =========================================================================
     // USER PROFILES
-    // - User hanya bisa membaca profil sendiri (atau admin bisa baca semua)
-    // - User hanya bisa membuat profil sendiri, dengan role 'employee' & status 'pending'
-    // - User TIDAK bisa mengubah role atau status sendiri (hanya admin)
-    // - User TIDAK bisa menghapus profil sendiri (hanya admin)
     // =========================================================================
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
 
-      // Create: user bisa membuat profilnya sendiri dan otomatis jadi admin (karena sudah difilter di sisi client via allowed_emails)
+      // Create: User pertama / terdaftar otomatis create
       allow create: if isOwner(userId)
-        && request.resource.data.uid == userId
-        && request.resource.data.role == 'admin'
-        && request.resource.data.status == 'approved';
+        && request.resource.data.uid == userId;
 
-      // Update: user bisa update profil sendiri TAPI TIDAK bisa ubah role/status.
-      // Admin bisa update apapun (termasuk role dan status).
       allow update: if isAdmin()
         || (isOwner(userId)
             && request.resource.data.uid == resource.data.uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status);
 
-      // Delete: hanya admin
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // GUESTBOOK
-    // =========================================================================
-    match /guests/{guestId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isAdmin() || isSecurity() || hasRole('receptionist');
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // ATTENDANCE
-    // =========================================================================
-    match /attendance/{attendanceId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // B3 WASTE
-    // =========================================================================
-    match /waste/{wasteId} {
-      allow read: if isSignedIn();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // INFRASTRUCTURE (SARPRAS)
-    // =========================================================================
-    match /sarpras/{sarprasId} {
-      allow get: if true;
-      allow list: if isSignedIn();
-      allow create, update: if isAdmin() || isTeknik();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // OFFICE SUPPLIES
-    // =========================================================================
-    match /supplies/{id} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() || hasRole('receptionist') || isTeknik();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // WORKSHOP MATERIALS
-    // =========================================================================
-    match /workshop-materials/{id} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() || isTeknik();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // WORKSHOP TRANSACTIONS
-    // =========================================================================
-    match /workshop-transactions/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // OVERTIME
-    // =========================================================================
-    match /overtime/{overtimeId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // LEAVE PERMITS
-    // =========================================================================
-    match /leave-permits/{permitId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || isSecurity();
-    }
-
-    // =========================================================================
-    // SHIFT HANDOVERS
-    // =========================================================================
-    match /shift-handovers/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // PATROLS
-    // =========================================================================
-    match /patrols/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // SECURITY LOGS
-    // =========================================================================
-    match /security-logs/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // GATE PASS
-    // =========================================================================
-    match /gate-pass/{id} {
-      allow read: if isSignedIn();
-      allow create, update: if isSecurity() || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // PENITIPAN BARANG
-    // =========================================================================
-    match /penitipan/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // SAFETY BRIEFINGS
-    // =========================================================================
-    match /safety-briefings/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // LOGBOOK ENDORSEMENTS
-    // =========================================================================
-    match /logbook-endorsements/{id} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // SECURITY REPORTS
-    // =========================================================================
-    match /security-reports/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin();
-      allow update: if isSecurity() || hasRole('hsse') || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // EMPLOYEES (DATA PEKERJA)
-    // =========================================================================
-    match /employees/{id} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
-    }
-    // =========================================================================
-    // MAINTENANCE CHECKLISTS (SARPRAS)
-    // =========================================================================
-    match /maintenance_checklists/{id} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() || isTeknik();
-      allow delete: if isAdmin();
-    }
-    // =========================================================================
-    // MAINTENANCE HISTORY (SARPRAS)
-    // =========================================================================
-    match /maintenance_history/{id} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() || isTeknik();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // CALIBRATIONS (SARPRAS)
-    // =========================================================================
-    match /calibrations/{id} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() || isTeknik();
-      allow delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // MOBIL CHECKLISTS
-    // =========================================================================
-    match /mobil_checklists/{id} {
-      allow read: if isSignedIn();
-      allow create: if isAdmin() || hasRole('employee') || hasRole('driver') || isTeknik();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // TUKAR DINAS (SHIFT EXCHANGE)
-    // =========================================================================
-    match /tukar-dinas/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // DIPPING REFUELLER
-    // =========================================================================
-    match /dipping-records/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin() || hasRole('ro') || hasRole('employee');
-      allow update, delete: if isAdmin();
-    }
-
-    // =========================================================================
-    // CEKLISH REFUELLER
-    // =========================================================================
-    match /ceklish-refueller-records/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSecurity() || isAdmin() || hasRole('ro') || hasRole('employee') || isTeknik();
-      allow update, delete: if isAdmin();
-    }
-    // =========================================================================
-    // OPERATIONAL LOGS
-    // =========================================================================
-    match /operational_logs/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSecurity() || isAdmin();
       allow delete: if isAdmin();
     }
     
     // =========================================================================
-    // DAMAGE REPORTS (LAPORAN KERUSAKAN SARPRAS)
+    // DAMAGE REPORTS (LAPORAN KERUSAKAN)
     // =========================================================================
     match /damage_reports/{id} {
       allow read: if isSignedIn();
+      // Pelapor (siapapun yang login) bisa membuat laporan
       allow create: if isSignedIn();
-      allow update: if isAdmin() || isTeknik();
-      allow delete: if isAdmin();
+      // Hanya Admin yang bisa memproses/update dan menghapus laporan
+      allow update, delete: if isAdmin();
     }
   }
 }

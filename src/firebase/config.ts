@@ -20,11 +20,12 @@
 // This should resolve the issue.
 
 export const firebaseConfig = {
-  projectId: "digital-monitoring-maintenance",
-  appId: "1:60393075530:web:8c88b5040cfdb6544d07b3",
-  apiKey: "AIzaSyDXO1f_d3kI8gJm2WrMmelJ489hBlzAj0Y",
-  authDomain: "digital-monitoring-maintenance.firebaseapp.com",
-  measurementId: "G-3849CN8QFG",
-  messagingSenderId: "60393075530",
-  storageBucket: "digital-monitoring-maintenance.firebasestorage.app"
+  projectId: "digiport-ptpp",
+  appId: "1:915090878008:web:594a85e463f0fa17ea40cd",
+  storageBucket: "digiport-ptpp.firebasestorage.app",
+  apiKey: "AIzaSyAYSHs1QSt0Q1SjI3pIrUc0yFnIBxxOxX4",
+  authDomain: "digiport-ptpp.firebaseapp.com",
+  messagingSenderId: "915090878008",
+  projectNumber: "915090878008",
+  version: "2"
 };
