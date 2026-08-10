@@ -50,7 +50,7 @@ const auth = getAuth(adminApp);
 const CreateUserInputSchema = z.object({
   email: z.string().email().describe('Email address for the new user.'),
   password: z.string().min(6).describe('Initial password (min 6 chars).'),
-  role: z.enum(['admin', 'employee', 'security', 'receptionist', 'teknik', 'csbr', 'tad', 'ro', 'pp', 'driver']).describe('Assigned system role.'),
+  role: z.enum(['admin', 'employee', 'security', 'receptionist', 'teknik', 'csbr', 'tad', 'ro', 'pp', 'driver', 'spv_rsd', 'spv_maintenance', 'aftm']).describe('Assigned system role.'),
   status: z.enum(['pending', 'approved']).describe('Initial account status.'),
   displayName: z.string().optional().describe('Full name of the user.'),
 });

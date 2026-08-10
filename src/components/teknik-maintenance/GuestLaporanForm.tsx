@@ -26,6 +26,9 @@ export default function GuestLaporanForm() {
   const [areaKerusakan, setAreaKerusakan] = useState('');
   const [jenisKerusakan, setJenisKerusakan] = useState('');
   const [sumberKetidaksesuaian, setSumberKetidaksesuaian] = useState('');
+  const [kategoriPTPP, setKategoriPTPP] = useState<'Perbaikan' | 'Perawatan'>('Perbaikan');
+  const [persyaratanDilanggar, setPersyaratanDilanggar] = useState('');
+  const [batasWaktuReply, setBatasWaktuReply] = useState('');
   const [priority, setPriority] = useState<'Rendah' | 'Sedang' | 'Tinggi'>('Sedang');
   const [fotoKerusakan, setFotoKerusakan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,12 +66,18 @@ export default function GuestLaporanForm() {
         timestamp: format(now, 'yyyy-MM-dd HH:mm:ss'),
         namaPelapor: namaPelapor || 'Tamu',
         jabatanPelapor: 'TAMU (GUEST)',
+        kepadaFungsi: 'Maintenance',
         areaKerusakan,
         jenisKerusakan,
         fotoKerusakan: fotoUrl,
         sumberKetidaksesuaian,
+        kategoriPTPP,
+        persyaratanDilanggar,
+        batasWaktuReply,
+        signaturePemohon: namaPelapor || 'Tamu',
         priority,
         status: 'Open',
+        workflowState: 'WAITING_SPV_RSD_1',
         timestamp_obj: serverTimestamp() as any,
       };
 
@@ -163,6 +172,37 @@ export default function GuestLaporanForm() {
             </div>
 
             <div className="space-y-2">
+              <Label>Kategori PTPP</Label>
+              <Select required value={kategoriPTPP} onValueChange={(v: any) => setKategoriPTPP(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kategori..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Perbaikan">Perbaikan</SelectItem>
+                  <SelectItem value="Perawatan">Perawatan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Persyaratan yang Dilanggar (Opsional)</Label>
+              <Input 
+                value={persyaratanDilanggar} 
+                onChange={e => setPersyaratanDilanggar(e.target.value)} 
+                placeholder="Contoh: SOP No. 123..." 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Batas Waktu Reply (Opsional)</Label>
+              <Input 
+                type="date"
+                value={batasWaktuReply} 
+                onChange={e => setBatasWaktuReply(e.target.value)} 
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
               <Label>Tingkat Prioritas</Label>
               <Select required value={priority} onValueChange={(v: any) => setPriority(v)}>
                 <SelectTrigger>

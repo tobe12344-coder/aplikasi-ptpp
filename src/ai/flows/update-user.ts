@@ -53,7 +53,7 @@ const db = getFirestore(adminApp);
 // Define the shape of the data that can be updated.
 // Using .optional() means not all fields have to be provided on every update.
 const UserUpdateDataSchema = z.object({
-  role: z.enum(['admin', 'employee', 'security', 'receptionist', 'teknik', 'csbr', 'tad', 'ro', 'pp', 'driver']).optional(),
+  role: z.enum(['admin', 'employee', 'security', 'receptionist', 'teknik', 'csbr', 'tad', 'ro', 'pp', 'driver', 'spv_rsd', 'spv_maintenance', 'aftm']).optional(),
   status: z.enum(['pending', 'approved']).optional(),
 });
 

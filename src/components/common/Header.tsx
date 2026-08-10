@@ -19,12 +19,28 @@ export default function Header() {
   const getRoleBadgeVariant = (role?: string) => {
     switch (role) {
       case 'admin':
+      case 'aftm':
         return 'destructive';
       case 'security':
+      case 'spv_rsd':
         return 'secondary';
+      case 'spv_maintenance':
+        return 'default';
       default:
         return 'default';
     }
+  }
+
+  const formatRoleDisplay = (role?: string) => {
+    if (!role) return '';
+    if (role === 'spv_rsd') return 'SPV RSD';
+    if (role === 'spv_maintenance') return 'SPV Maintenance';
+    if (role === 'aftm') return 'AFTM';
+    if (role === 'csbr') return 'CSBR';
+    if (role === 'tad') return 'TAD';
+    if (role === 'ro') return 'RO';
+    if (role === 'pp') return 'PP';
+    return role;
   }
 
   return (
@@ -40,7 +56,7 @@ export default function Header() {
               <p className="font-semibold text-sm">{user.email}</p>
               {user.role && (
                 <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs mt-1 capitalize">
-                  {user.role} {user.status === 'pending' && '(Pending)'}
+                  {formatRoleDisplay(user.role)} {user.status === 'pending' && '(Pending)'}
                 </Badge>
               )}
           </div>

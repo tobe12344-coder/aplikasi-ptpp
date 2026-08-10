@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Plus, Search, Printer, Edit, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { SignaturePadModal } from '@/components/common/SignaturePadModal';
 import { useToast } from '@/hooks/use-toast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import PrintDamageReport from './PrintDamageReport';
@@ -37,21 +39,36 @@ export default function LaporanKerusakanClient() {
   const [areaKerusakan, setAreaKerusakan] = useState('');
   const [jenisKerusakan, setJenisKerusakan] = useState('');
   const [sumberKetidaksesuaian, setSumberKetidaksesuaian] = useState('');
+  const [kategoriPTPP, setKategoriPTPP] = useState<'Perbaikan' | 'Perawatan'>('Perbaikan');
+  const [persyaratanDilanggar, setPersyaratanDilanggar] = useState('');
+  const [batasWaktuReply, setBatasWaktuReply] = useState('');
   const [priority, setPriority] = useState<'Rendah' | 'Sedang' | 'Tinggi'>('Sedang');
   const [fotoKerusakan, setFotoKerusakan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form states - Edit (Teknik)
+  // Form states - Edit (Teknik & Approval)
   const [analisaPenyebab, setAnalisaPenyebab] = useState('');
+  const [perbaikanSementara, setPerbaikanSementara] = useState('');
+  const [tanggalInspeksi, setTanggalInspeksi] = useState('');
+  const [tindakanPerbaikan, setTindakanPerbaikan] = useState('');
+  const [pic, setPic] = useState('');
+  const [waktuPelaksanaan, setWaktuPelaksanaan] = useState('');
+  const [dokumenDirevisi, setDokumenDirevisi] = useState('');
+  const [targetWaktuVerifikasi, setTargetWaktuVerifikasi] = useState('');
+  
+  // Part 3
+  const [status, setStatus] = useState<'Open' | 'Close' | 'On Progres' | 'Perlu Follow up'>('Open');
+  const [tanggalVerifikasi, setTanggalVerifikasi] = useState('');
+  const [targetVerifikasiSelanjutnya, setTargetVerifikasiSelanjutnya] = useState('');
+  const [catatan, setCatatan] = useState('');
+  const [konversiGambar, setKonversiGambar] = useState<File | null>(null);
+
+  // Legacy fields
   const [tanggalTindakLanjut, setTanggalTindakLanjut] = useState('');
   const [pelaksanaanPerbaikan, setPelaksanaanPerbaikan] = useState('');
   const [jabatanTimPerbaikan, setJabatanTimPerbaikan] = useState('');
-  const [status, setStatus] = useState<'Open' | 'Close' | 'On Progres'>('Open');
   const [kebutuhanMaterial, setKebutuhanMaterial] = useState('');
-  const [perbaikanSementara, setPerbaikanSementara] = useState('');
   const [statusPengadaan, setStatusPengadaan] = useState('');
-  const [dokumenDirevisi, setDokumenDirevisi] = useState('');
-  const [konversiGambar, setKonversiGambar] = useState<File | null>(null);
 
   const reportsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -98,12 +115,18 @@ export default function LaporanKerusakanClient() {
         timestamp: format(now, 'yyyy-MM-dd HH:mm:ss'),
         namaPelapor: user.displayName || user.email || 'Unknown',
         jabatanPelapor: user.role?.toUpperCase() || 'KARYAWAN',
+        kepadaFungsi: 'Maintenance',
         areaKerusakan,
         jenisKerusakan,
         fotoKerusakan: fotoUrl,
         sumberKetidaksesuaian,
+        kategoriPTPP,
+        persyaratanDilanggar,
+        batasWaktuReply,
+        signaturePemohon: user.displayName || user.email || 'Unknown',
         priority,
         status: 'Open',
+        workflowState: 'WAITING_SPV_RSD_1',
         timestamp_obj: serverTimestamp() as any, // For sorting, using any to bypass type check for now
       };
 
@@ -140,56 +163,119 @@ export default function LaporanKerusakanClient() {
 
   const openEditModal = (report: DamageReport) => {
     setSelectedReport(report);
+    // Part 2
     setAnalisaPenyebab(report.analisaPenyebab || '');
+    setPerbaikanSementara(report.perbaikanSementara || '');
+    setTanggalInspeksi(report.tanggalInspeksi || '');
+    setTindakanPerbaikan(report.tindakanPerbaikan || report.pelaksanaanPerbaikan || '');
+    setPic(report.pic || report.jabatanTimPerbaikan || '');
+    setWaktuPelaksanaan(report.waktuPelaksanaan || report.tanggalTindakLanjut || '');
+    setDokumenDirevisi(report.dokumenDirevisi || '');
+    setTargetWaktuVerifikasi(report.targetWaktuVerifikasi || '');
+    
+    // Part 3
+    setStatus(report.status || 'Open');
+    setTanggalVerifikasi(report.tanggalVerifikasi || '');
+    setTargetVerifikasiSelanjutnya(report.targetVerifikasiSelanjutnya || '');
+    setCatatan(report.catatan || '');
+    
+    // Legacy
     setTanggalTindakLanjut(report.tanggalTindakLanjut || '');
     setPelaksanaanPerbaikan(report.pelaksanaanPerbaikan || '');
     setJabatanTimPerbaikan(report.jabatanTimPerbaikan || '');
-    setStatus(report.status || 'Open');
     setKebutuhanMaterial(report.kebutuhanMaterial || '');
-    setPerbaikanSementara(report.perbaikanSementara || '');
     setStatusPengadaan(report.statusPengadaan || '');
-    setDokumenDirevisi(report.dokumenDirevisi || '');
+    
     setIsEditOpen(true);
   };
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!firestore || !selectedReport?.id) return;
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signatureAction, setSignatureAction] = useState<'part1' | 'part2' | 'part2_rsd' | 'part3' | null>(null);
 
+  const updateReportState = async (updates: Partial<DamageReport>, successMsg: string) => {
+    if (!firestore || !selectedReport?.id) return;
     setIsSubmitting(true);
     try {
-      let fotoTindakLanjutUrl = selectedReport.konversiGambar;
-      if (konversiGambar) {
-        fotoTindakLanjutUrl = await uploadPhoto(konversiGambar, `damage_reports/teknik_${Date.now()}_${konversiGambar.name}`);
-      }
-
       const reportRef = doc(firestore, 'damage_reports', selectedReport.id);
-      
-      await updateDoc(reportRef, {
-        analisaPenyebab,
-        tanggalTindakLanjut,
-        pelaksanaanPerbaikan,
-        jabatanTimPerbaikan,
-        status,
-        kebutuhanMaterial,
-        perbaikanSementara,
-        statusPengadaan,
-        dokumenDirevisi,
-        konversiGambar: fotoTindakLanjutUrl
-      });
-
-      toast({
-        title: 'Sukses',
-        description: 'Laporan berhasil diperbarui',
-      });
+      await updateDoc(reportRef, updates);
+      toast({ title: 'Sukses', description: successMsg });
       setIsEditOpen(false);
     } catch (error) {
       console.error('Error updating report:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal memperbarui laporan',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Gagal memperbarui laporan', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openSignatureModal = (action: 'part1' | 'part2' | 'part2_rsd' | 'part3') => {
+    setSignatureAction(action);
+    setSignatureModalOpen(true);
+  };
+
+  const handleSignatureSave = async (dataUrl: string) => {
+    setSignatureModalOpen(false);
+    
+    if (signatureAction === 'part1') {
+      await updateReportState({
+        workflowState: 'WAITING_MAINTENANCE',
+        signatureSpvRsd1: user?.displayName || user?.email || 'Unknown',
+        signatureSpvRsd1_timestamp: serverTimestamp() as any,
+        signatureSpvRsd1_image: dataUrl,
+      }, 'Bagian 1 berhasil disetujui (SPV RSD). Lanjut ke Teknik.');
+    } else if (signatureAction === 'part2') {
+      await savePart2Data(dataUrl);
+    } else if (signatureAction === 'part2_rsd') {
+      await updateReportState({
+        workflowState: 'WAITING_AFTM',
+        signatureSpvRsd2: user?.displayName || user?.email || 'Unknown',
+        signatureSpvRsd2_timestamp: serverTimestamp() as any,
+        signatureSpvRsd2_image: dataUrl,
+      }, 'Tindak lanjut perbaikan disetujui (SPV RSD). Lanjut ke AFTM.');
+    } else if (signatureAction === 'part3') {
+      await updateReportState({
+        status, 
+        tanggalVerifikasi,
+        targetVerifikasiSelanjutnya,
+        catatan,
+        workflowState: 'COMPLETED',
+        signatureAftm: user?.displayName || user?.email || 'Unknown',
+        signatureAftm_timestamp: serverTimestamp() as any,
+        signatureAftm_image: dataUrl,
+      }, 'Laporan PTPP selesai dan ditutup (AFTM).');
+    }
+  };
+
+  const savePart2Data = async (signatureDataUrl: string) => {
+    if (!firestore || !selectedReport?.id) return;
+    setIsSubmitting(true);
+    try {
+      let fotoUrl = selectedReport.konversiGambar || '';
+      if (konversiGambar) {
+        fotoUrl = await uploadPhoto(konversiGambar, `damage_reports/teknik_${Date.now()}_${konversiGambar.name}`);
+      }
+      const updates = {
+        perbaikanSementara,
+        tanggalInspeksi,
+        analisaPenyebab,
+        tindakanPerbaikan,
+        pic,
+        waktuPelaksanaan,
+        dokumenDirevisi,
+        targetWaktuVerifikasi,
+        konversiGambar: fotoUrl,
+        workflowState: 'WAITING_SPV_RSD_2',
+        signatureSpvMaintenance: user?.displayName || user?.email || 'Unknown',
+        signatureSpvMaintenance_timestamp: serverTimestamp() as any,
+        signatureSpvMaintenance_image: signatureDataUrl,
+      } as Partial<DamageReport>;
+      
+      const reportRef = doc(firestore, 'damage_reports', selectedReport.id);
+      await updateDoc(reportRef, updates);
+      toast({ title: 'Sukses', description: 'Tindak lanjut disimpan dan ditandatangani.' });
+      setIsEditOpen(false);
+    } catch (err) {
+      toast({ title: 'Error', description: 'Gagal menyimpan tindak lanjut.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -199,6 +285,9 @@ export default function LaporanKerusakanClient() {
     setAreaKerusakan('');
     setJenisKerusakan('');
     setSumberKetidaksesuaian('');
+    setKategoriPTPP('Perbaikan');
+    setPersyaratanDilanggar('');
+    setBatasWaktuReply('');
     setPriority('Sedang');
     setFotoKerusakan(null);
   };
@@ -261,18 +350,53 @@ export default function LaporanKerusakanClient() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Tingkat Prioritas</Label>
-                <Select required value={priority} onValueChange={(v: any) => setPriority(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih prioritas..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Rendah">Rendah (Aman ditunda)</SelectItem>
-                    <SelectItem value="Sedang">Sedang (Perlu segera)</SelectItem>
-                    <SelectItem value="Tinggi">Tinggi (Kritis / Operasional terhenti)</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Kategori PTPP</Label>
+                  <Select required value={kategoriPTPP} onValueChange={(v: any) => setKategoriPTPP(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih kategori..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Perbaikan">Perbaikan</SelectItem>
+                      <SelectItem value="Perawatan">Perawatan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Tingkat Prioritas</Label>
+                  <Select required value={priority} onValueChange={(v: any) => setPriority(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih prioritas..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Rendah">Rendah (Aman ditunda)</SelectItem>
+                      <SelectItem value="Sedang">Sedang (Perlu segera)</SelectItem>
+                      <SelectItem value="Tinggi">Tinggi (Kritis / Operasional terhenti)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Persyaratan yang Dilanggar (Opsional)</Label>
+                  <Input 
+                    value={persyaratanDilanggar} 
+                    onChange={e => setPersyaratanDilanggar(e.target.value)} 
+                    placeholder="Contoh: SOP No. 123..." 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Batas Waktu Reply (Opsional)</Label>
+                  <Input 
+                    type="date"
+                    value={batasWaktuReply} 
+                    onChange={e => setBatasWaktuReply(e.target.value)} 
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -327,17 +451,17 @@ export default function LaporanKerusakanClient() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        {report.status === 'Open' ? (
-                          <span className="flex items-center text-red-600 font-medium text-xs bg-red-50 px-2 py-1 rounded-full w-fit">
-                            <AlertCircle className="w-3 h-3 mr-1" /> OPEN
-                          </span>
-                        ) : report.status === 'On Progres' ? (
-                          <span className="flex items-center text-yellow-600 font-medium text-xs bg-yellow-50 px-2 py-1 rounded-full w-fit">
-                            <AlertCircle className="w-3 h-3 mr-1" /> ON PROGRES
+                        {report.workflowState === 'COMPLETED' ? (
+                          <span className="flex items-center text-green-600 font-medium text-xs bg-green-50 px-2 py-1 rounded-full w-fit">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> SELESAI ({report.status})
                           </span>
                         ) : (
-                          <span className="flex items-center text-green-600 font-medium text-xs bg-green-50 px-2 py-1 rounded-full w-fit">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> CLOSE
+                          <span className="flex items-center text-blue-600 font-medium text-xs bg-blue-50 px-2 py-1 rounded-full w-fit">
+                            <AlertCircle className="w-3 h-3 mr-1" /> 
+                            {report.workflowState === 'WAITING_SPV_RSD_1' ? 'Tinjauan SPV RSD' :
+                             report.workflowState === 'WAITING_MAINTENANCE' ? 'Proses Teknik' :
+                             report.workflowState === 'WAITING_SPV_RSD_2' ? 'Review Teknik (RSD)' :
+                             report.workflowState === 'WAITING_AFTM' ? 'Approval AFTM' : 'DRAFT'}
                           </span>
                         )}
                       </td>
@@ -346,11 +470,9 @@ export default function LaporanKerusakanClient() {
                           <Button size="sm" variant="outline" className="h-8" onClick={() => setPrintReport(report)}>
                             <Printer className="w-4 h-4 mr-1" /> Print PTPP
                           </Button>
-                          {isAdminOrTeknik && (
-                            <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => openEditModal(report)}>
-                              <Edit className="w-4 h-4 mr-1" /> Tindak Lanjut
-                            </Button>
-                          )}
+                          <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => openEditModal(report)}>
+                            <Edit className="w-4 h-4 mr-1" /> Detail / Aksi
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -362,127 +484,257 @@ export default function LaporanKerusakanClient() {
         </CardContent>
       </Card>
 
-      {/* Edit Modal untuk Admin/Teknik */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tindak Lanjut Laporan - {selectedReport?.noLaporan}</DialogTitle>
+            <DialogTitle>Detail PTPP - {selectedReport?.noLaporan}</DialogTitle>
           </DialogHeader>
-          <div className="bg-slate-50 p-4 rounded-md border text-sm mb-4">
-            <p><strong>Keluhan:</strong> {selectedReport?.jenisKerusakan}</p>
-            <p><strong>Area:</strong> {selectedReport?.areaKerusakan}</p>
-          </div>
-          
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Analisa Penyebab Kerusakan</Label>
-                <Textarea value={analisaPenyebab} onChange={e => setAnalisaPenyebab(e.target.value)} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label>Pelaksanaan Perbaikan / Tindakan</Label>
-                <Textarea value={pelaksanaanPerbaikan} onChange={e => setPelaksanaanPerbaikan(e.target.value)} rows={3} />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tanggal Tindak Lanjut</Label>
-                <Input type="date" value={tanggalTindakLanjut} onChange={e => setTanggalTindakLanjut(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Perbaikan / Tindakan Sementara (Jika ada)</Label>
-                <Input value={perbaikanSementara} onChange={e => setPerbaikanSementara(e.target.value)} />
-              </div>
-            </div>
+          <Accordion type="single" collapsible defaultValue="part1" className="w-full">
+            {/* Bagian 1 */}
+            <AccordionItem value="part1">
+              <AccordionTrigger className="text-lg font-semibold text-slate-800">Bagian 1: Di isi oleh Pemohon/Auditor</AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-md border">
+                  <div><strong>Dari / Fungsi:</strong> {selectedReport?.namaPelapor} / {selectedReport?.jabatanPelapor}</div>
+                  <div><strong>Kepada / Fungsi:</strong> {selectedReport?.kepadaFungsi || 'Maintenance'}</div>
+                  <div><strong>Kategori:</strong> {selectedReport?.kategoriPTPP || 'Perbaikan'}</div>
+                  <div><strong>Sumber:</strong> {selectedReport?.sumberKetidaksesuaian || '-'}</div>
+                  <div className="md:col-span-2"><strong>Ketidaksesuaian (Keluhan):</strong> {selectedReport?.jenisKerusakan}</div>
+                  <div className="md:col-span-2"><strong>Persyaratan Dilanggar:</strong> {selectedReport?.persyaratanDilanggar || '-'}</div>
+                  <div><strong>Batas Waktu Reply:</strong> {selectedReport?.batasWaktuReply || '-'}</div>
+                  <div><strong>Prioritas:</strong> {selectedReport?.priority}</div>
+                  {selectedReport?.fotoKerusakan && (
+                    <div className="md:col-span-2">
+                      <a href={selectedReport.fotoKerusakan} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Lihat Ilustrasi/Gambar</a>
+                    </div>
+                  )}
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div className="space-y-2">
-                <Label>Kebutuhan Material</Label>
-                <Input value={kebutuhanMaterial} onChange={e => setKebutuhanMaterial(e.target.value)} placeholder="Contoh: Lampu, Cat..." />
-              </div>
-              <div className="space-y-2">
-                <Label>Status Pengadaan</Label>
-                <Select value={statusPengadaan} onValueChange={setStatusPengadaan}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih status pengadaan..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pengadaan Material">Pengadaan Material</SelectItem>
-                    <SelectItem value="Pengadaan Jasa">Pengadaan Jasa</SelectItem>
-                    <SelectItem value="Swakelola">Swakelola</SelectItem>
-                    <SelectItem value="E-Purchasing">E-Purchasing</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status Laporan</Label>
-                <Select value={status} onValueChange={(v: any) => setStatus(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih status..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="On Progres">On Progres</SelectItem>
-                    <SelectItem value="Close">Close</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Dokumen yang Direvisi (Jika ada)</Label>
-                <Select value={dokumenDirevisi} onValueChange={setDokumenDirevisi}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih dokumen yang direvisi..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Tidak Ada">Tidak Ada</SelectItem>
-                    <SelectItem value="Pedoman/Manual">Pedoman / Manual</SelectItem>
-                    <SelectItem value="TKO">TKO</SelectItem>
-                    <SelectItem value="TKI">TKI</SelectItem>
-                    <SelectItem value="TKPA">TKPA</SelectItem>
-                    <SelectItem value="Formulir">Formulir</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Tim Perbaikan (Jabatan)</Label>
-                <Input value={jabatanTimPerbaikan} onChange={e => setJabatanTimPerbaikan(e.target.value)} placeholder="Contoh: Tim Teknik" />
-              </div>
-            </div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-md border mt-4 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">Pemohon / Auditor</p>
+                    <p className="font-semibold text-slate-900">{selectedReport?.signaturePemohon || selectedReport?.namaPelapor}</p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="text-xs text-slate-500 uppercase">Disetujui Oleh (Supervisor RSD)</p>
+                    {selectedReport?.signatureSpvRsd1_image ? (
+                      <div className="mt-1 flex flex-col items-start sm:items-end">
+                        <img src={selectedReport.signatureSpvRsd1_image} alt="Signature" className="h-12 object-contain border-b border-slate-200" />
+                        <p className="font-semibold text-green-600 text-sm mt-1">{selectedReport.signatureSpvRsd1}</p>
+                      </div>
+                    ) : selectedReport?.signatureSpvRsd1 ? (
+                      <p className="font-semibold text-green-600">{selectedReport.signatureSpvRsd1}</p>
+                    ) : (
+                      (user?.role === 'spv_rsd' || user?.role === 'admin') && (selectedReport?.workflowState === 'WAITING_SPV_RSD_1' || !selectedReport?.workflowState) ? (
+                        <Button onClick={() => openSignatureModal('part1')} disabled={isSubmitting} size="sm" className="mt-1">Tanda Tangani Bagian 1</Button>
+                      ) : (
+                        <p className="text-yellow-600 italic text-sm mt-1">Menunggu Persetujuan</p>
+                      )
+                    )}
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
 
-            <div className="space-y-2">
-              <Label>Foto Hasil Perbaikan (Opsional)</Label>
-              <Input type="file" accept="image/*" capture="environment" onChange={e => setKonversiGambar(e.target.files?.[0] || null)} />
-              {selectedReport?.konversiGambar && (
-                <p className="text-xs text-blue-600 mt-1">Foto perbaikan sudah ada. Upload baru untuk mengganti.</p>
-              )}
-            </div>
+            {/* Bagian 2 */}
+            <AccordionItem value="part2">
+              <AccordionTrigger className="text-lg font-semibold text-slate-800">Bagian 2: Di isi oleh Penerima Laporan</AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-4">
+                {(!selectedReport?.workflowState || selectedReport?.workflowState === 'WAITING_SPV_RSD_1' || selectedReport?.workflowState === 'DRAFT') ? (
+                  <div className="p-4 bg-slate-50 border rounded text-center text-slate-500">
+                    Menunggu persetujuan Bagian 1 sebelum bisa diproses.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Perbaikan / Tindakan Sementara</Label>
+                        <Input value={perbaikanSementara} onChange={e => setPerbaikanSementara(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tanggal Inspeksi</Label>
+                        <Input type="date" value={tanggalInspeksi} onChange={e => setTanggalInspeksi(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Analisa Penyebab Kerusakan</Label>
+                      <Textarea value={analisaPenyebab} onChange={e => setAnalisaPenyebab(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} rows={2} />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Tindakan Perbaikan</Label>
+                        <Textarea value={tindakanPerbaikan} onChange={e => setTindakanPerbaikan(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} rows={2} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>PIC (Tim Teknik)</Label>
+                        <Input value={pic} onChange={e => setPic(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Target Waktu Pelaksanaan</Label>
+                        <Input type="date" value={waktuPelaksanaan} onChange={e => setWaktuPelaksanaan(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                      </div>
+                    </div>
 
-            <div className="pt-4 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Batal</Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-blue-600">
-                {isSubmitting ? 'Menyimpan...' : 'Simpan Tindak Lanjut'}
-              </Button>
-            </div>
-          </form>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Dokumen yang Direvisi (Jika ada)</Label>
+                        <Select value={dokumenDirevisi} onValueChange={setDokumenDirevisi} disabled={selectedReport.signatureSpvMaintenance != null}>
+                          <SelectTrigger><SelectValue placeholder="Pilih dokumen..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Tidak Ada">Tidak Ada</SelectItem>
+                            <SelectItem value="Pedoman/Manual">Pedoman / Manual</SelectItem>
+                            <SelectItem value="TKO">TKO</SelectItem>
+                            <SelectItem value="TKI">TKI</SelectItem>
+                            <SelectItem value="TKPA">TKPA</SelectItem>
+                            <SelectItem value="Formulir">Formulir</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Target Waktu Verifikasi</Label>
+                        <Input type="date" value={targetWaktuVerifikasi} onChange={e => setTargetWaktuVerifikasi(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                      </div>
+                    </div>
+
+                    {!selectedReport.signatureSpvMaintenance && (
+                      <div className="space-y-2">
+                        <Label>Foto Hasil Perbaikan (Opsional)</Label>
+                        <Input type="file" accept="image/*" capture="environment" onChange={e => setKonversiGambar(e.target.files?.[0] || null)} />
+                      </div>
+                    )}
+                    {selectedReport.konversiGambar && (
+                      <div className="text-sm">
+                        <a href={selectedReport.konversiGambar} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Lihat Foto Hasil Perbaikan</a>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-md border mt-4 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase">Penanggung Jawab (SPV Maintenance)</p>
+                        {selectedReport?.signatureSpvMaintenance_image ? (
+                          <div className="mt-1 flex flex-col items-start">
+                            <img src={selectedReport.signatureSpvMaintenance_image} alt="Signature" className="h-12 object-contain border-b border-slate-200" />
+                            <p className="font-semibold text-slate-900 text-sm mt-1">{selectedReport.signatureSpvMaintenance}</p>
+                          </div>
+                        ) : selectedReport?.signatureSpvMaintenance ? (
+                          <p className="font-semibold text-slate-900">{selectedReport.signatureSpvMaintenance}</p>
+                        ) : (
+                          (user?.role === 'spv_maintenance' || user?.role === 'teknik' || user?.role === 'admin') ? (
+                            <Button onClick={() => openSignatureModal('part2')} disabled={isSubmitting} size="sm" className="mt-1">Simpan & Tanda Tangani</Button>
+                          ) : (
+                            <p className="text-yellow-600 italic text-sm mt-1">Menunggu SPV Maintenance</p>
+                          )
+                        )}
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs text-slate-500 uppercase">Disetujui Oleh (Supervisor RSD)</p>
+                        {selectedReport?.signatureSpvRsd2_image ? (
+                          <div className="mt-1 flex flex-col items-start sm:items-end">
+                            <img src={selectedReport.signatureSpvRsd2_image} alt="Signature" className="h-12 object-contain border-b border-slate-200" />
+                            <p className="font-semibold text-green-600 text-sm mt-1">{selectedReport.signatureSpvRsd2}</p>
+                          </div>
+                        ) : selectedReport?.signatureSpvRsd2 ? (
+                          <p className="font-semibold text-green-600">{selectedReport.signatureSpvRsd2}</p>
+                        ) : (
+                          (user?.role === 'spv_rsd' || user?.role === 'admin') && selectedReport?.signatureSpvMaintenance ? (
+                            <Button onClick={() => openSignatureModal('part2_rsd')} disabled={isSubmitting} size="sm" className="mt-1">Tanda Tangani Bagian 2</Button>
+                          ) : (
+                            <p className="text-yellow-600 italic text-sm mt-1">Menunggu Persetujuan</p>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Bagian 3 */}
+            <AccordionItem value="part3">
+              <AccordionTrigger className="text-lg font-semibold text-slate-800">Bagian 3: Verifikasi & Approval Akhir</AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-4">
+                {(selectedReport?.workflowState !== 'WAITING_AFTM' && selectedReport?.workflowState !== 'COMPLETED') ? (
+                  <div className="p-4 bg-slate-50 border rounded text-center text-slate-500">
+                    Menunggu persetujuan Bagian 2 selesai sebelum verifikasi akhir.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Status PTPP</Label>
+                        <Select value={status} onValueChange={(v: any) => setStatus(v)} disabled={selectedReport.signatureAftm != null}>
+                          <SelectTrigger><SelectValue placeholder="Pilih status..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Close">Close</SelectItem>
+                            <SelectItem value="Perlu Follow up">Perlu Follow up</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tanggal Verifikasi Akhir</Label>
+                        <Input type="date" value={tanggalVerifikasi} onChange={e => setTanggalVerifikasi(e.target.value)} disabled={selectedReport.signatureAftm != null} />
+                      </div>
+                      {status === 'Perlu Follow up' && (
+                        <div className="space-y-2">
+                          <Label>Target Verifikasi Selanjutnya</Label>
+                          <Input type="date" value={targetVerifikasiSelanjutnya} onChange={e => setTargetVerifikasiSelanjutnya(e.target.value)} disabled={selectedReport.signatureAftm != null} />
+                        </div>
+                      )}
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Catatan</Label>
+                        <Textarea value={catatan} onChange={e => setCatatan(e.target.value)} disabled={selectedReport.signatureAftm != null} rows={2} />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-end items-center bg-white p-4 rounded-md border mt-4">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 uppercase">Approval AFTM</p>
+                        {selectedReport?.signatureAftm_image ? (
+                          <div className="mt-1 flex flex-col items-end">
+                            <img src={selectedReport.signatureAftm_image} alt="Signature" className="h-12 object-contain border-b border-slate-200" />
+                            <p className="font-semibold text-green-600 text-sm mt-1">{selectedReport.signatureAftm}</p>
+                          </div>
+                        ) : selectedReport?.signatureAftm ? (
+                          <p className="font-semibold text-green-600">{selectedReport.signatureAftm}</p>
+                        ) : (
+                          (user?.role === 'aftm' || user?.role === 'admin') ? (
+                            <Button onClick={() => openSignatureModal('part3')} disabled={isSubmitting} size="sm" className="mt-1">Tanda Tangani & Tutup PTPP</Button>
+                          ) : (
+                            <p className="text-yellow-600 italic text-sm mt-1">Menunggu AFTM</p>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </DialogContent>
       </Dialog>
 
-      {/* Hidden print component */}
-      <div className="hidden">
-        {printReport && (
-          <PrintDamageReport 
-            report={printReport} 
-            onClose={() => setPrintReport(null)} 
-            shouldPrint={true}
-          />
-        )}
-      </div>
-
+      {printReport && (
+        <PrintDamageReport 
+          report={printReport} 
+          onClose={() => setPrintReport(null)} 
+          shouldPrint={true}
+        />
+      )}
+      {/* Signature Modal */}
+      <SignaturePadModal 
+        isOpen={signatureModalOpen}
+        onClose={() => setSignatureModalOpen(false)}
+        onSave={handleSignatureSave}
+        title={
+          signatureAction === 'part1' ? 'Tanda Tangan SPV RSD (Bagian 1)' :
+          signatureAction === 'part2' ? 'Tanda Tangan SPV Maintenance' :
+          signatureAction === 'part2_rsd' ? 'Tanda Tangan SPV RSD (Bagian 2)' :
+          'Tanda Tangan AFTM (Approval Akhir)'
+        }
+      />
     </div>
   );
 }
