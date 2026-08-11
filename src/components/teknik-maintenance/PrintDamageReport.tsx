@@ -159,19 +159,19 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                   <td colSpan={6} className="text-center font-bold">SUMBER KETIDAKSESUAIAN ATAU POTENSINYA</td>
                 </tr>
                 <tr>
-                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Keluhan' ? <span className="red-text">✔</span> : ''}</span></td>
+                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Keluhan' ? <span className="text-black font-bold">✓</span> : ''}</span></td>
                   <td className="w-[29%]">Keluhan</td>
-                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Tinjauan Manajemen' ? <span className="red-text">✔</span> : ''}</span></td>
+                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Tinjauan Manajemen' ? <span className="text-black font-bold">✓</span> : ''}</span></td>
                   <td className="w-[29%]">Tinjauan Manajemen</td>
-                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Usulan/Saran' ? <span className="red-text">✔</span> : ''}</span></td>
+                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Usulan/Saran' ? <span className="text-black font-bold">✓</span> : ''}</span></td>
                   <td className="w-[30%]">Usulan/Saran</td>
                 </tr>
                 <tr>
-                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Audit' ? <span className="red-text">✔</span> : ''}</span></td>
+                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Audit' ? <span className="text-black font-bold">✓</span> : ''}</span></td>
                   <td>Audit</td>
-                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Survey Lapangan' ? <span className="red-text">✔</span> : ''}</span></td>
+                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Survey Lapangan' ? <span className="text-black font-bold">✓</span> : ''}</span></td>
                   <td>Survey Lapangan</td>
-                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Lain-lain' ? <span className="red-text">✔</span> : ''}</span></td>
+                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Lain-lain' ? <span className="text-black font-bold">✓</span> : ''}</span></td>
                   <td>Lain-lain (Tinjauan Lapangan)</td>
                 </tr>
                 <tr>
@@ -345,15 +345,15 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                     Dokumen yang direvisi (jika ada) :
                     <div className="grid grid-cols-3 gap-1 mt-2 mb-1 ml-4 w-3/4">
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Pedoman/Manual' ? <span className="red-text">✔</span> : ''}</span> Pedoman/Manual</div>
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKO' ? <span className="red-text">✔</span> : ''}</span> TKO</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Pedoman/Manual' ? <span className="text-black font-bold">✓</span> : ''}</span> Pedoman/Manual</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKO' ? <span className="text-black font-bold">✓</span> : ''}</span> TKO</div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKI' ? <span className="red-text">✔</span> : ''}</span> TKI</div>
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKPA' ? <span className="red-text">✔</span> : ''}</span> TKPA</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKI' ? <span className="text-black font-bold">✓</span> : ''}</span> TKI</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKPA' ? <span className="text-black font-bold">✓</span> : ''}</span> TKPA</div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Formulir' ? <span className="red-text">✔</span> : ''}</span> Formulir</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Formulir' ? <span className="text-black font-bold">✓</span> : ''}</span> Formulir</div>
                       </div>
                     </div>
                   </td>
@@ -373,8 +373,8 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                 <tr>
                   <td className="valign-top w-[25%]">
                     <div className="mb-2">Status</div>
-                    <div className="flex items-center mb-1 ml-4"><span className="check-box-large">{report.status === 'Close' ? <span className="red-text">✔</span> : ''}</span> Close</div>
-                    <div className="flex items-center ml-4"><span className="check-box-large">{report.status === 'Open' ? <span className="red-text">✔</span> : ''}</span> Perlu Follow up</div>
+                    <div className="flex items-center mb-1 ml-4"><span className="check-box-large">{report.status === 'Close' ? <span className="text-black font-bold">✓</span> : ''}</span> Close</div>
+                    <div className="flex items-center ml-4"><span className="check-box-large">{report.status === 'Open' ? <span className="text-black font-bold">✓</span> : ''}</span> Perlu Follow up</div>
                     <div className="mt-4">Catatan : <span className="red-text">{report.catatan}</span></div>
                   </td>
                   <td className="valign-top w-[55%]">
