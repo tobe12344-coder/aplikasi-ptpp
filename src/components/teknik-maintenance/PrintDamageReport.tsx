@@ -30,7 +30,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
           margin: [0, 0, 0, 0] as [number, number, number, number], // top, left, bottom, right in mm
           filename: `SF_PTPP_${report.noLaporan}.pdf`,
           image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
+          html2canvas: { scale: 4, useCORS: true, logging: false },
           jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
         };
 
