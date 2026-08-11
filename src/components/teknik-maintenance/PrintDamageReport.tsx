@@ -94,7 +94,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
             <style>{`
               #print-area * { box-sizing: border-box; }
               #print-area table { width: 100%; border-collapse: collapse; }
-              #print-area th, #print-area td { border: 1px solid black; padding: 4px 6px; }
+              #print-area th, #print-area td { border: 1px solid black; padding: 4px 6px; vertical-align: middle; }
               #print-area .no-border-t { border-top: none; }
               #print-area .no-border-b { border-bottom: none; }
               #print-area .no-border-l { border-left: none; }
