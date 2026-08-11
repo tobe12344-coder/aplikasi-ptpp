@@ -228,6 +228,7 @@ export default function LaporanKerusakanClient() {
         signatureSpvRsd1: user?.displayName || user?.email || 'Unknown',
         signatureSpvRsd1_timestamp: serverTimestamp() as any,
         signatureSpvRsd1_image: dataUrl,
+        tanggalInspeksi: format(new Date(), 'yyyy-MM-dd'),
       }, 'Bagian 1 berhasil disetujui (SPV RSD). Lanjut ke Teknik.');
     } else if (signatureAction === 'part2') {
       await savePart2Data(dataUrl);
