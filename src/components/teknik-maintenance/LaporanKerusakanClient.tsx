@@ -2,7 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, type CollectionReference, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, addDoc, updateDoc, doc, deleteDoc, serverTimestamp, type CollectionReference } from 'firebase/firestore';
+import { generateSequentialNoLaporan } from '@/lib/generateNoLaporan';
 import type { DamageReport } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,16 +79,11 @@ export default function LaporanKerusakanClient() {
     );
   }, [firestore]);
 
-  const { data: reports, loading } = useCollection<DamageReport>(reportsQuery);
+  const { data: reports, loading } = useCollection<DamageReport>(reportsQuery as any);
 
   const isAdminOrTeknik = user?.role === 'admin' || user?.role === 'teknik';
 
-  const generateNoLaporan = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `PTPP-${random}/PNDB240000/${year}`;
-  };
+
 
   const uploadPhoto = async (file: File, path: string) => {
     const storage = getStorage();
@@ -107,7 +103,7 @@ export default function LaporanKerusakanClient() {
         fotoUrl = await uploadPhoto(fotoKerusakan, `damage_reports/pelapor_${Date.now()}_${fotoKerusakan.name}`);
       }
 
-      const noLaporan = generateNoLaporan();
+      const noLaporan = await generateSequentialNoLaporan(firestore);
       const now = new Date();
 
       const newReport: Omit<DamageReport, 'id'> = {

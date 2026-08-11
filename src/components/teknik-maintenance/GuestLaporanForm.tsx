@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+
+import { generateSequentialNoLaporan } from '@/lib/generateNoLaporan';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { DamageReport } from '@/lib/types';
@@ -33,12 +35,7 @@ export default function GuestLaporanForm() {
   const [fotoKerusakan, setFotoKerusakan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const generateNoLaporan = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `PTPP-${random}/PNDB240000/${year}`;
-  };
+
 
   const uploadPhoto = async (file: File, path: string) => {
     const storage = getStorage();
@@ -58,7 +55,7 @@ export default function GuestLaporanForm() {
         fotoUrl = await uploadPhoto(fotoKerusakan, `damage_reports/guest_${Date.now()}_${fotoKerusakan.name}`);
       }
 
-      const noLaporan = generateNoLaporan();
+      const noLaporan = await generateSequentialNoLaporan(firestore);
       const now = new Date();
 
       const newReport: Omit<DamageReport, 'id'> = {

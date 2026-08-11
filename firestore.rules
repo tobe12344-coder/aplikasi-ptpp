@@ -60,14 +60,24 @@ service cloud.firestore {
     }
     
     // =========================================================================
+    // COUNTERS (FOR SEQUENTIAL ID)
+    // =========================================================================
+    match /counters/{counterId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // =========================================================================
     // DAMAGE REPORTS (LAPORAN KERUSAKAN)
     // =========================================================================
     match /damage_reports/{id} {
       allow read: if isSignedIn();
       // Pelapor (siapapun yang login) bisa membuat laporan
       allow create: if isSignedIn();
-      // Hanya Admin yang bisa memproses/update dan menghapus laporan
-      allow update, delete: if isAdmin();
+      // Hanya Admin atau Role Spesifik yang bisa memproses/update laporan
+      allow update: if isAdmin() || (isActiveUser() && getUserData().role in ['spv_rsd', 'spv_maintenance', 'aftm', 'teknik']);
+      // Hanya admin yang bisa menghapus
+      allow delete: if isAdmin();
     }
   }
 }
