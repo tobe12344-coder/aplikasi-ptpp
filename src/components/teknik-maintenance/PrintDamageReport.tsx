@@ -345,15 +345,15 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                     Dokumen yang direvisi (jika ada) :
                     <div className="grid grid-cols-3 gap-1 mt-2 mb-1 ml-4 w-3/4">
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Pedoman/Manual' ? <span className="red-text">V</span> : ''}</span> Pedoman/Manual</div>
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKO' ? <span className="red-text">V</span> : ''}</span> TKO</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Pedoman/Manual' ? <span className="red-text">✔</span> : ''}</span> Pedoman/Manual</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKO' ? <span className="red-text">✔</span> : ''}</span> TKO</div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKI' ? <span className="red-text">V</span> : ''}</span> TKI</div>
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKPA' ? <span className="red-text">V</span> : ''}</span> TKPA</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKI' ? <span className="red-text">✔</span> : ''}</span> TKI</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'TKPA' ? <span className="red-text">✔</span> : ''}</span> TKPA</div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Formulir' ? <span className="red-text">V</span> : ''}</span> Formulir</div>
+                        <div className="flex items-center"><span className="check-box-large">{report.dokumenDirevisi === 'Formulir' ? <span className="red-text">✔</span> : ''}</span> Formulir</div>
                       </div>
                     </div>
                   </td>
@@ -373,8 +373,8 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                 <tr>
                   <td className="valign-top w-[25%]">
                     <div className="mb-2">Status</div>
-                    <div className="flex items-center mb-1 ml-4"><span className="check-box-large">{report.status === 'Close' ? <span className="red-text">V</span> : ''}</span> Close</div>
-                    <div className="flex items-center ml-4"><span className="check-box-large">{report.status === 'Open' ? <span className="red-text">V</span> : ''}</span> Perlu Follow up</div>
+                    <div className="flex items-center mb-1 ml-4"><span className="check-box-large">{report.status === 'Close' ? <span className="red-text">✔</span> : ''}</span> Close</div>
+                    <div className="flex items-center ml-4"><span className="check-box-large">{report.status === 'Open' ? <span className="red-text">✔</span> : ''}</span> Perlu Follow up</div>
                     <div className="mt-4">Catatan : <span className="red-text">{report.catatan}</span></div>
                   </td>
                   <td className="valign-top w-[55%]">
@@ -406,7 +406,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
               <div className="break-before-page mt-8">
                 <h3 className="font-bold text-[12px] mb-2 underline">LAMPIRAN: DOKUMENTASI HASIL PERBAIKAN</h3>
                 <div className="border border-black p-2 inline-block">
-                  <img src={report.konversiGambar} alt="Hasil Perbaikan" className="max-w-full max-h-[800px] object-contain" crossOrigin="anonymous" />
+                  <img src={`/api/image-proxy?url=${encodeURIComponent(report.konversiGambar)}`} alt="Hasil Perbaikan" className="max-w-full max-h-[800px] object-contain" />
                 </div>
                 <div className="mt-1 font-bold">Dilampirkan pada tanggal: {report.tanggalTindakLanjut}</div>
               </div>
