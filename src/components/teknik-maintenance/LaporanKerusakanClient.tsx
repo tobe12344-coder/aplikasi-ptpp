@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, limit, addDoc, updateDoc, doc, deleteDoc, serverTimestamp, type CollectionReference } from 'firebase/firestore';
 import { generateSequentialNoLaporan } from '@/lib/generateNoLaporan';
@@ -46,6 +46,16 @@ export default function LaporanKerusakanClient() {
   const [priority, setPriority] = useState<'Rendah' | 'Sedang' | 'Tinggi'>('Sedang');
   const [fotoKerusakan, setFotoKerusakan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const today = new Date();
+    let daysToAdd = 3; // Sedang
+    if (priority === 'Rendah') daysToAdd = 7;
+    if (priority === 'Tinggi') daysToAdd = 1;
+    
+    today.setDate(today.getDate() + daysToAdd);
+    setBatasWaktuReply(format(today, 'yyyy-MM-dd'));
+  }, [priority]);
 
   // Form states - Edit (Teknik & Approval)
   const [analisaPenyebab, setAnalisaPenyebab] = useState('');
@@ -501,8 +511,13 @@ export default function LaporanKerusakanClient() {
                   <div><strong>Batas Waktu Reply:</strong> {selectedReport?.batasWaktuReply || '-'}</div>
                   <div><strong>Prioritas:</strong> {selectedReport?.priority}</div>
                   {selectedReport?.fotoKerusakan && (
-                    <div className="md:col-span-2">
-                      <a href={selectedReport.fotoKerusakan} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Lihat Ilustrasi/Gambar</a>
+                    <div className="md:col-span-2 mt-2">
+                      <p className="font-semibold text-sm mb-2 text-slate-700">Foto Kerusakan:</p>
+                      <img 
+                        src={selectedReport.fotoKerusakan} 
+                        alt="Foto Kerusakan" 
+                        className="max-h-64 rounded-md border shadow-sm object-contain" 
+                      />
                     </div>
                   )}
                 </div>
@@ -602,8 +617,13 @@ export default function LaporanKerusakanClient() {
                       </div>
                     )}
                     {selectedReport.konversiGambar && (
-                      <div className="text-sm">
-                        <a href={selectedReport.konversiGambar} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Lihat Foto Hasil Perbaikan</a>
+                      <div className="text-sm mt-2">
+                        <p className="font-semibold text-slate-700 mb-2">Foto Hasil Perbaikan:</p>
+                        <img 
+                          src={selectedReport.konversiGambar} 
+                          alt="Foto Hasil Perbaikan" 
+                          className="max-h-64 rounded-md border shadow-sm object-contain" 
+                        />
                       </div>
                     )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { generateSequentialNoLaporan } from '@/lib/generateNoLaporan';
 import { useFirestore } from '@/firebase';
@@ -34,6 +34,16 @@ export default function GuestLaporanForm() {
   const [priority, setPriority] = useState<'Rendah' | 'Sedang' | 'Tinggi'>('Sedang');
   const [fotoKerusakan, setFotoKerusakan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const today = new Date();
+    let daysToAdd = 3; // Sedang
+    if (priority === 'Rendah') daysToAdd = 7;
+    if (priority === 'Tinggi') daysToAdd = 1;
+    
+    today.setDate(today.getDate() + daysToAdd);
+    setBatasWaktuReply(format(today, 'yyyy-MM-dd'));
+  }, [priority]);
 
 
 
