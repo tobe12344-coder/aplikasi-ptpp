@@ -214,11 +214,13 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                           <td className="text-center no-border-t no-border-l no-border-r py-2">Pemohon/Auditor</td>
                         </tr>
                         <tr>
-                          <td className="valign-bot no-border-b no-border-l no-border-r relative" style={{ height: '100px' }}>
-                            <div className="absolute top-1 left-1 red-text">{report.jabatanPelapor}</div>
-                            <div className="w-full flex flex-col justify-end items-start h-full">
-                              <span className="red-text underline uppercase">{report.signaturePemohon || report.namaPelapor}</span>
-                              <span className="red-text font-bold">Tgl: {tgl}</span>
+                          <td className="valign-top no-border-b no-border-l no-border-r p-2" style={{ minHeight: '100px' }}>
+                            <div className="w-full flex flex-col justify-between h-full">
+                              <div className="red-text text-left">{report.jabatanPelapor}</div>
+                              <div className="flex flex-col items-start mt-auto">
+                                <span className="red-text underline uppercase">{report.signaturePemohon || report.namaPelapor}</span>
+                                <span className="red-text font-bold">Tgl: {tgl}</span>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -232,14 +234,16 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                           <td className="text-center no-border-t no-border-l no-border-r py-2">Disetujui Oleh,</td>
                         </tr>
                         <tr>
-                          <td className="valign-bot no-border-b no-border-l no-border-r relative" style={{ height: '100px' }}>
-                            <div className="absolute top-1 left-1 red-text">Supervisor RSD</div>
-                            <div className="w-full flex flex-col justify-end items-start h-full">
-                              {report.signatureSpvRsd1_image && (
-                                <img src={report.signatureSpvRsd1_image} alt="Signature" className="h-10 object-contain mb-1" />
-                              )}
-                              <span className="red-text underline">{report.signatureSpvRsd1 || 'Urip Widodo'}</span>
-                              <span className="red-text font-bold">Tgl: {report.signatureSpvRsd1_image ? formatSigDate(report.signatureSpvRsd1_timestamp) : '-'}</span>
+                          <td className="valign-top no-border-b no-border-l no-border-r p-2" style={{ minHeight: '100px' }}>
+                            <div className="w-full flex flex-col justify-between h-full">
+                              <div className="red-text text-left">Supervisor RSD</div>
+                              <div className="flex flex-col items-start mt-auto">
+                                {report.signatureSpvRsd1_image && (
+                                  <img src={report.signatureSpvRsd1_image} alt="Signature" className="h-10 object-contain mb-1" />
+                                )}
+                                <span className="red-text underline">{report.signatureSpvRsd1 || 'Urip Widodo'}</span>
+                                <span className="red-text font-bold">Tgl: {report.signatureSpvRsd1_image ? formatSigDate(report.signatureSpvRsd1_timestamp) : '-'}</span>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -278,14 +282,16 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                           <td className="text-center no-border-t no-border-l no-border-r py-2">Penanggung Jawab</td>
                         </tr>
                         <tr>
-                          <td className="valign-bot no-border-b no-border-l no-border-r relative" style={{ height: '60px' }}>
-                            <div className="absolute top-1 left-1 red-text">Spv Maintenance</div>
-                            <div className="w-full flex flex-col justify-end items-start h-full">
-                              {report.signatureSpvMaintenance_image && (
-                                <img src={report.signatureSpvMaintenance_image} alt="Signature" className="h-8 object-contain mb-1" />
-                              )}
-                              <span className="red-text underline">{report.signatureSpvMaintenance || 'Kiamnasmeithson'}</span>
-                              <span className="red-text font-bold">Tgl: {report.signatureSpvMaintenance_image ? formatSigDate(report.signatureSpvMaintenance_timestamp) : '-'}</span>
+                          <td className="valign-top no-border-b no-border-l no-border-r p-2" style={{ minHeight: '80px' }}>
+                            <div className="w-full flex flex-col justify-between h-full">
+                              <div className="red-text text-left">Spv Maintenance</div>
+                              <div className="flex flex-col items-start mt-auto">
+                                {report.signatureSpvMaintenance_image && (
+                                  <img src={report.signatureSpvMaintenance_image} alt="Signature" className="h-10 object-contain mb-1" />
+                                )}
+                                <span className="red-text underline">{report.signatureSpvMaintenance || 'Kiamnasmeithson'}</span>
+                                <span className="red-text font-bold">Tgl: {report.signatureSpvMaintenance_image ? formatSigDate(report.signatureSpvMaintenance_timestamp) : '-'}</span>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -299,14 +305,16 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                           <td className="text-center no-border-t no-border-l no-border-r py-2">Disetujui oleh,</td>
                         </tr>
                         <tr>
-                          <td className="valign-bot no-border-b no-border-l no-border-r relative" style={{ height: '60px' }}>
-                            <div className="absolute top-1 left-1 red-text">Supervisor RSD</div>
-                            <div className="w-full flex flex-col justify-end items-start h-full">
-                              {report.signatureSpvRsd2_image && (
-                                <img src={report.signatureSpvRsd2_image} alt="Signature" className="h-8 object-contain mb-1" />
-                              )}
-                              <span className="red-text underline">{report.signatureSpvRsd2 || 'Urip Widodo'}</span>
-                              <span className="red-text font-bold">Tgl: {report.signatureSpvRsd2_image ? formatSigDate(report.signatureSpvRsd2_timestamp) : '-'}</span>
+                          <td className="valign-top no-border-b no-border-l no-border-r p-2" style={{ minHeight: '80px' }}>
+                            <div className="w-full flex flex-col justify-between h-full">
+                              <div className="red-text text-left">Supervisor RSD</div>
+                              <div className="flex flex-col items-start mt-auto">
+                                {report.signatureSpvRsd2_image && (
+                                  <img src={report.signatureSpvRsd2_image} alt="Signature" className="h-10 object-contain mb-1" />
+                                )}
+                                <span className="red-text underline">{report.signatureSpvRsd2 || 'Urip Widodo'}</span>
+                                <span className="red-text font-bold">Tgl: {report.signatureSpvRsd2_image ? formatSigDate(report.signatureSpvRsd2_timestamp) : '-'}</span>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -387,14 +395,16 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                       <div>: <span className="red-text ml-4">{report.targetVerifikasiSelanjutnya}</span></div>
                     </div>
                   </td>
-                  <td className="valign-top w-[20%] text-center relative h-[100px]">
-                    <div className="absolute top-1 inset-x-0">Approval AFTM</div>
-                    <div className="absolute bottom-1 inset-x-0 flex flex-col items-center">
-                      {report.signatureAftm_image && (
-                        <img src={report.signatureAftm_image} alt="Signature" className="h-10 object-contain mb-1" />
-                      )}
-                      <span className="red-text underline">{report.signatureAftm || 'Wahyudi'}</span>
-                      <span className="red-text font-bold">Tgl: {report.signatureAftm_image ? formatSigDate(report.signatureAftm_timestamp) : '-'}</span>
+                  <td className="valign-top w-[20%] p-2" style={{ minHeight: '100px' }}>
+                    <div className="w-full flex flex-col justify-between h-full items-center text-center">
+                      <div className="text-black mb-2">Approval AFTM</div>
+                      <div className="flex flex-col items-center mt-auto">
+                        {report.signatureAftm_image && (
+                          <img src={report.signatureAftm_image} alt="Signature" className="h-10 object-contain mb-1" />
+                        )}
+                        <span className="red-text underline">{report.signatureAftm || 'Wahyudi'}</span>
+                        <span className="red-text font-bold">Tgl: {report.signatureAftm_image ? formatSigDate(report.signatureAftm_timestamp) : '-'}</span>
+                      </div>
                     </div>
                   </td>
                 </tr>
