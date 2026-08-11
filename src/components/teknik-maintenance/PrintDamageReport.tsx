@@ -191,7 +191,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                     <span className="font-bold">ILUSTRASI / GAMBAR (jika ada) :</span>
                     {report.fotoKerusakan ? (
                       <div className="absolute inset-0 flex items-center justify-center pt-4">
-                        <img src={report.fotoKerusakan} alt="Kerusakan" className="max-h-[110px] max-w-full object-contain" crossOrigin="anonymous" />
+                        <img src={`/api/image-proxy?url=${encodeURIComponent(report.fotoKerusakan)}`} alt="Kerusakan" className="max-h-[110px] max-w-full object-contain" />
                       </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center font-bold">#UNKNOWN!</div>
