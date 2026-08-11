@@ -159,19 +159,19 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                   <td colSpan={6} className="text-center font-bold">SUMBER KETIDAKSESUAIAN ATAU POTENSINYA</td>
                 </tr>
                 <tr>
-                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Keluhan' ? <span className="red-text">V</span> : ''}</span></td>
+                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Keluhan' ? <span className="red-text">✔</span> : ''}</span></td>
                   <td className="w-[29%]">Keluhan</td>
-                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Tinjauan Manajemen' ? <span className="red-text">V</span> : ''}</span></td>
+                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Tinjauan Manajemen' ? <span className="red-text">✔</span> : ''}</span></td>
                   <td className="w-[29%]">Tinjauan Manajemen</td>
-                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Usulan/Saran' ? <span className="red-text">V</span> : ''}</span></td>
+                  <td className="w-[4%] text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Usulan/Saran' ? <span className="red-text">✔</span> : ''}</span></td>
                   <td className="w-[30%]">Usulan/Saran</td>
                 </tr>
                 <tr>
-                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Audit' ? <span className="red-text">V</span> : ''}</span></td>
+                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Audit' ? <span className="red-text">✔</span> : ''}</span></td>
                   <td>Audit</td>
-                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Survey Lapangan' ? <span className="red-text">V</span> : ''}</span></td>
+                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Survey Lapangan' ? <span className="red-text">✔</span> : ''}</span></td>
                   <td>Survey Lapangan</td>
-                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Lain-lain' ? <span className="red-text">V</span> : ''}</span></td>
+                  <td className="text-center"><span className="check-box">{report.sumberKetidaksesuaian === 'Lain-lain' ? <span className="red-text">✔</span> : ''}</span></td>
                   <td>Lain-lain (Tinjauan Lapangan)</td>
                 </tr>
                 <tr>
