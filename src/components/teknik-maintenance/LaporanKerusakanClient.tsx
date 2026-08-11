@@ -242,7 +242,7 @@ export default function LaporanKerusakanClient() {
     } else if (signatureAction === 'part3') {
       await updateReportState({
         status, 
-        tanggalVerifikasi,
+        tanggalVerifikasi: format(new Date(), 'yyyy-MM-dd'),
         targetVerifikasiSelanjutnya,
         catatan,
         workflowState: 'COMPLETED',
@@ -689,10 +689,6 @@ export default function LaporanKerusakanClient() {
                             <SelectItem value="Perlu Follow up">Perlu Follow up</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Tanggal Verifikasi Akhir</Label>
-                        <Input type="date" value={tanggalVerifikasi} onChange={e => setTanggalVerifikasi(e.target.value)} disabled={selectedReport.signatureAftm != null} />
                       </div>
                       {status === 'Perlu Follow up' && (
                         <div className="space-y-2">
