@@ -44,6 +44,16 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
 
   const tgl = report.timestamp ? report.timestamp.split(' ')[0] : '-';
 
+  const formatSigDate = (ts: any) => {
+    if (!ts) return '-';
+    if (ts.toDate) {
+      return ts.toDate().toISOString().split('T')[0];
+    } else if (ts.seconds) {
+      return new Date(ts.seconds * 1000).toISOString().split('T')[0];
+    }
+    return '-';
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/80 z-[9999] flex flex-col">
       {/* Top Bar for Actions */}
@@ -229,7 +239,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                                 <img src={report.signatureSpvRsd1_image} alt="Signature" className="h-10 object-contain mb-1" />
                               )}
                               <span className="red-text underline">{report.signatureSpvRsd1 || 'Urip Widodo'}</span>
-                              <span className="red-text font-bold">Tgl: {tgl}</span>
+                              <span className="red-text font-bold">Tgl: {report.signatureSpvRsd1_image ? formatSigDate(report.signatureSpvRsd1_timestamp) : '-'}</span>
                             </div>
                           </td>
                         </tr>
@@ -275,6 +285,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                                 <img src={report.signatureSpvMaintenance_image} alt="Signature" className="h-8 object-contain mb-1" />
                               )}
                               <span className="red-text underline">{report.signatureSpvMaintenance || 'Kiamnasmeithson'}</span>
+                              <span className="red-text font-bold">Tgl: {report.signatureSpvMaintenance_image ? formatSigDate(report.signatureSpvMaintenance_timestamp) : '-'}</span>
                             </div>
                           </td>
                         </tr>
@@ -295,6 +306,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                                 <img src={report.signatureSpvRsd2_image} alt="Signature" className="h-8 object-contain mb-1" />
                               )}
                               <span className="red-text underline">{report.signatureSpvRsd2 || 'Urip Widodo'}</span>
+                              <span className="red-text font-bold">Tgl: {report.signatureSpvRsd2_image ? formatSigDate(report.signatureSpvRsd2_timestamp) : '-'}</span>
                             </div>
                           </td>
                         </tr>
@@ -382,6 +394,7 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
                         <img src={report.signatureAftm_image} alt="Signature" className="h-10 object-contain mb-1" />
                       )}
                       <span className="red-text underline">{report.signatureAftm || 'Wahyudi'}</span>
+                      <span className="red-text font-bold">Tgl: {report.signatureAftm_image ? formatSigDate(report.signatureAftm_timestamp) : '-'}</span>
                     </div>
                   </td>
                 </tr>
