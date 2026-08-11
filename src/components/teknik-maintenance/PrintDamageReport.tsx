@@ -136,20 +136,20 @@ export default function PrintDamageReport({ report, onClose, shouldPrint }: Prin
             <table className="no-border-t double-border-b">
               <tbody>
                 <tr>
-                  <td className="w-[15%] no-border-r">Kepada / Fungsi</td>
-                  <td className="w-[1%] no-border-l no-border-r">:</td>
-                  <td className="w-[54%] no-border-l red-text border-b-dotted">
+                  <td className="w-[15%] no-border-r align-middle">Kepada / Fungsi</td>
+                  <td className="w-[1%] no-border-l no-border-r align-middle">:</td>
+                  <td className="w-[54%] no-border-l red-text border-b-dotted align-middle">
                     Kiamnasmeithson / Maintenance
                   </td>
-                  <td className="w-[30%] text-center">Area / Lokasi Temuan</td>
+                  <td className="w-[30%] text-center align-middle">Area / Lokasi Temuan</td>
                 </tr>
                 <tr>
-                  <td className="w-[15%] no-border-r">Dari / Fungsi</td>
-                  <td className="w-[1%] no-border-l no-border-r">:</td>
-                  <td className="w-[54%] no-border-l red-text">
+                  <td className="w-[15%] no-border-r align-middle">Dari / Fungsi</td>
+                  <td className="w-[1%] no-border-l no-border-r align-middle">:</td>
+                  <td className="w-[54%] no-border-l red-text align-middle">
                     <span className="uppercase">{report.namaPelapor}</span> / <span className="uppercase">{report.jabatanPelapor}</span>
                   </td>
-                  <td className="w-[30%] text-center uppercase font-bold red-text">
+                  <td className="w-[30%] text-center uppercase font-bold red-text align-middle">
                     {report.areaKerusakan}
                   </td>
                 </tr>
