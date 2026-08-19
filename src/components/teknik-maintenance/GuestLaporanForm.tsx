@@ -105,8 +105,13 @@ export default function GuestLaporanForm() {
         description: 'Laporan berhasil dikirim. Terima kasih atas partisipasi Anda.',
       });
       
-      // Reset form or redirect back to login
-      router.push('/login');
+      // Reset form
+      setNamaPelapor('');
+      setAreaKerusakan('');
+      setJenisKerusakan('');
+      setSumberKetidaksesuaian('');
+      setPersyaratanDilanggar('');
+      setFotoKerusakan(null);
     } catch (error) {
       console.error('Error creating report:', error);
       toast({
@@ -229,7 +234,6 @@ export default function GuestLaporanForm() {
             <Input 
               type="file" 
               accept="image/*" 
-              capture="environment" 
               onChange={e => setFotoKerusakan(e.target.files?.[0] || null)} 
               className="cursor-pointer"
             />

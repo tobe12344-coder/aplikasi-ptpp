@@ -408,7 +408,7 @@ export default function LaporanKerusakanClient() {
 
               <div className="space-y-2">
                 <Label>Foto Kerusakan (Opsional tapi disarankan)</Label>
-                <Input type="file" accept="image/*" capture="environment" onChange={e => setFotoKerusakan(e.target.files?.[0] || null)} />
+                <Input type="file" accept="image/*" onChange={e => setFotoKerusakan(e.target.files?.[0] || null)} />
               </div>
 
               <div className="pt-4 flex justify-end gap-2">
@@ -614,7 +614,7 @@ export default function LaporanKerusakanClient() {
                     {!selectedReport.signatureSpvMaintenance && (
                       <div className="space-y-2">
                         <Label>Foto Hasil Perbaikan (Opsional)</Label>
-                        <Input type="file" accept="image/*" capture="environment" onChange={e => setKonversiGambar(e.target.files?.[0] || null)} />
+                        <Input type="file" accept="image/*" onChange={e => setKonversiGambar(e.target.files?.[0] || null)} />
                       </div>
                     )}
                     {selectedReport.konversiGambar && (
