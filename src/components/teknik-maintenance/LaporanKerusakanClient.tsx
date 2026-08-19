@@ -32,6 +32,9 @@ export default function LaporanKerusakanClient() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [rejectAction, setRejectAction] = useState<'part1' | 'part2_rsd' | 'part3' | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
   
   // Print state
   const [printReport, setPrintReport] = useState<DamageReport | null>(null);
@@ -68,7 +71,7 @@ export default function LaporanKerusakanClient() {
   const [targetWaktuVerifikasi, setTargetWaktuVerifikasi] = useState('');
   
   // Part 3
-  const [status, setStatus] = useState<'Open' | 'Close' | 'On Progres' | 'Perlu Follow up'>('Open');
+  const [status, setStatus] = useState<'Open' | 'Close' | 'On Progres' | 'Perlu Follow up' | 'REJECTED'>('Open');
   const [tanggalVerifikasi, setTanggalVerifikasi] = useState('');
   const [targetVerifikasiSelanjutnya, setTargetVerifikasiSelanjutnya] = useState('');
   const [catatan, setCatatan] = useState('');
@@ -250,6 +253,61 @@ export default function LaporanKerusakanClient() {
         signatureAftm_timestamp: serverTimestamp() as any,
         signatureAftm_image: dataUrl,
       }, 'Laporan PTPP selesai dan ditutup (AFTM).');
+    }
+  };
+
+  const openRejectModal = (action: 'part1' | 'part2_rsd' | 'part3') => {
+    setRejectAction(action);
+    setRejectNote('');
+    setIsRejectOpen(true);
+  };
+
+  const handleRejectSave = async () => {
+    if (!firestore || !selectedReport?.id) return;
+    setIsSubmitting(true);
+    try {
+      let updates: Partial<DamageReport> = {};
+      let successMsg = '';
+      
+      if (rejectAction === 'part1') {
+        updates = {
+          status: 'REJECTED',
+          workflowState: 'REJECTED',
+          rejectNoteRSD1: rejectNote
+        };
+        successMsg = 'Laporan telah ditolak.';
+      } else if (rejectAction === 'part2_rsd') {
+        updates = {
+          workflowState: 'WAITING_MAINTENANCE',
+          rejectNoteRSD2: rejectNote,
+          signatureSpvMaintenance: '',
+          signatureSpvMaintenance_image: '',
+          signatureSpvMaintenance_timestamp: null,
+        };
+        successMsg = 'Laporan dikembalikan ke SPV Maintenance untuk direvisi.';
+      } else if (rejectAction === 'part3') {
+        updates = {
+          workflowState: 'WAITING_MAINTENANCE',
+          rejectNoteAFTM: rejectNote,
+          signatureSpvMaintenance: '',
+          signatureSpvMaintenance_image: '',
+          signatureSpvMaintenance_timestamp: null,
+          signatureSpvRsd2: '',
+          signatureSpvRsd2_image: '',
+          signatureSpvRsd2_timestamp: null,
+        };
+        successMsg = 'Laporan dikembalikan ke SPV Maintenance dengan catatan AFTM.';
+      }
+      
+      const reportRef = doc(firestore, 'damage_reports', selectedReport.id);
+      await updateDoc(reportRef, updates);
+      toast({ title: 'Sukses', description: successMsg });
+      setIsRejectOpen(false);
+      setIsEditOpen(false);
+    } catch (err) {
+      toast({ title: 'Error', description: 'Gagal menolak laporan', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -462,6 +520,10 @@ export default function LaporanKerusakanClient() {
                           <span className="flex items-center text-green-600 font-medium text-xs bg-green-50 px-2 py-1 rounded-full w-fit">
                             <CheckCircle2 className="w-3 h-3 mr-1" /> SELESAI ({report.status})
                           </span>
+                        ) : report.workflowState === 'REJECTED' ? (
+                          <span className="flex items-center text-red-600 font-medium text-xs bg-red-50 px-2 py-1 rounded-full w-fit">
+                            <AlertCircle className="w-3 h-3 mr-1" /> DITOLAK
+                          </span>
                         ) : (
                           <span className="flex items-center text-blue-600 font-medium text-xs bg-blue-50 px-2 py-1 rounded-full w-fit">
                             <AlertCircle className="w-3 h-3 mr-1" /> 
@@ -539,7 +601,10 @@ export default function LaporanKerusakanClient() {
                       <p className="font-semibold text-green-600">{selectedReport.signatureSpvRsd1}</p>
                     ) : (
                       (user?.role === 'spv_rsd' || user?.role === 'admin') && (selectedReport?.workflowState === 'WAITING_SPV_RSD_1' || !selectedReport?.workflowState) ? (
-                        <Button onClick={() => openSignatureModal('part1')} disabled={isSubmitting} size="sm" className="mt-1">Tanda Tangani Bagian 1</Button>
+                        <div className="flex gap-2 mt-1 justify-end">
+                          <Button onClick={() => openSignatureModal('part1')} disabled={isSubmitting} size="sm">Tanda Tangani Bagian 1</Button>
+                          <Button onClick={() => openRejectModal('part1')} disabled={isSubmitting} size="sm" variant="destructive">Tolak Laporan</Button>
+                        </div>
                       ) : (
                         <p className="text-yellow-600 italic text-sm mt-1">Menunggu Persetujuan</p>
                       )
@@ -553,12 +618,27 @@ export default function LaporanKerusakanClient() {
             <AccordionItem value="part2">
               <AccordionTrigger className="text-lg font-semibold text-slate-800">Bagian 2: Di isi oleh Penerima Laporan</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
-                {(!selectedReport?.workflowState || selectedReport?.workflowState === 'WAITING_SPV_RSD_1' || selectedReport?.workflowState === 'DRAFT') ? (
+                {(!selectedReport?.workflowState || selectedReport?.workflowState === 'WAITING_SPV_RSD_1' || selectedReport?.workflowState === 'DRAFT' || selectedReport?.workflowState === 'REJECTED') ? (
                   <div className="p-4 bg-slate-50 border rounded text-center text-slate-500">
-                    Menunggu persetujuan Bagian 1 sebelum bisa diproses.
+                    Menunggu persetujuan Bagian 1 sebelum bisa diproses. (Atau laporan telah ditolak).
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {selectedReport?.rejectNoteRSD1 && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                        <strong>Catatan Penolakan SPV RSD (Tahap 1):</strong> {selectedReport.rejectNoteRSD1}
+                      </div>
+                    )}
+                    {selectedReport?.rejectNoteRSD2 && selectedReport.workflowState === 'WAITING_MAINTENANCE' && (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                        <strong>Catatan Revisi dari SPV RSD (Tahap 2):</strong> {selectedReport.rejectNoteRSD2}
+                      </div>
+                    )}
+                    {selectedReport?.rejectNoteAFTM && selectedReport.workflowState === 'WAITING_MAINTENANCE' && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                        <strong>Catatan Revisi dari AFTM:</strong> {selectedReport.rejectNoteAFTM}
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Perbaikan / Tindakan Sementara</Label>
@@ -657,8 +737,11 @@ export default function LaporanKerusakanClient() {
                           <p className="font-semibold text-green-600">{selectedReport.signatureSpvRsd2}</p>
                         ) : (
                           (user?.role === 'spv_rsd' || user?.role === 'admin') && selectedReport?.signatureSpvMaintenance ? (
-                            <Button onClick={() => openSignatureModal('part2_rsd')} disabled={isSubmitting} size="sm" className="mt-1">Tanda Tangani Bagian 2</Button>
-                          ) : (
+                          <div className="flex flex-col sm:flex-row gap-2 mt-1 justify-end">
+                            <Button onClick={() => openSignatureModal('part2_rsd')} disabled={isSubmitting} size="sm">Tanda Tangani Bagian 2</Button>
+                            <Button onClick={() => openRejectModal('part2_rsd')} disabled={isSubmitting} size="sm" variant="destructive">Tolak (Revisi)</Button>
+                          </div>
+                        ) : (
                             <p className="text-yellow-600 italic text-sm mt-1">Menunggu Persetujuan</p>
                           )
                         )}
@@ -714,8 +797,11 @@ export default function LaporanKerusakanClient() {
                           <p className="font-semibold text-green-600">{selectedReport.signatureAftm}</p>
                         ) : (
                           (user?.role === 'aftm' || user?.role === 'admin') ? (
-                            <Button onClick={() => openSignatureModal('part3')} disabled={isSubmitting} size="sm" className="mt-1">Tanda Tangani & Tutup PTPP</Button>
-                          ) : (
+                          <div className="flex flex-col sm:flex-row gap-2 mt-1 justify-end">
+                            <Button onClick={() => openSignatureModal('part3')} disabled={isSubmitting} size="sm">Tanda Tangani & Tutup PTPP</Button>
+                            <Button onClick={() => openRejectModal('part3')} disabled={isSubmitting} size="sm" variant="destructive">Tolak (Revisi)</Button>
+                          </div>
+                        ) : (
                             <p className="text-yellow-600 italic text-sm mt-1">Menunggu AFTM</p>
                           )
                         )}
@@ -748,6 +834,36 @@ export default function LaporanKerusakanClient() {
           'Tanda Tangan AFTM (Approval Akhir)'
         }
       />
+      {/* Reject Modal */}
+      <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {rejectAction === 'part1' ? 'Tolak Laporan (Tahap 1)' :
+               rejectAction === 'part2_rsd' ? 'Tolak & Kembalikan ke Maintenance (Tahap 2)' :
+               'Tolak & Kembalikan ke Maintenance (AFTM)'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Catatan Penolakan / Revisi</Label>
+              <Textarea 
+                value={rejectNote} 
+                onChange={e => setRejectNote(e.target.value)} 
+                placeholder="Masukkan alasan penolakan atau catatan revisi yang harus dilakukan..."
+                rows={4}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsRejectOpen(false)}>Batal</Button>
+              <Button type="button" variant="destructive" onClick={handleRejectSave} disabled={isSubmitting || !rejectNote.trim()}>
+                {isSubmitting ? 'Menyimpan...' : 'Konfirmasi Tolak'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,7 +10,7 @@ export interface AppUser extends FirebaseUser {
   jobTitle?: string;
 }
 
-export type PTPPWorkflowState = 'DRAFT' | 'WAITING_SPV_RSD_1' | 'WAITING_MAINTENANCE' | 'WAITING_SPV_RSD_2' | 'WAITING_AFTM' | 'COMPLETED';
+export type PTPPWorkflowState = 'DRAFT' | 'WAITING_SPV_RSD_1' | 'WAITING_MAINTENANCE' | 'WAITING_SPV_RSD_2' | 'WAITING_AFTM' | 'COMPLETED' | 'REJECTED';
 
 export interface DamageReport {
   id?: string;
@@ -58,7 +58,7 @@ export interface DamageReport {
   signatureSpvRsd2_image?: string; // Base64 signature
 
   // -- PART 3: Di isi oleh pemohon/auditor --
-  status: 'Open' | 'Close' | 'On Progres' | 'Perlu Follow up'; 
+  status: 'Open' | 'Close' | 'On Progres' | 'Perlu Follow up' | 'REJECTED'; 
   tanggalVerifikasi?: string;
   targetVerifikasiSelanjutnya?: string;
   catatan?: string;
@@ -69,6 +69,10 @@ export interface DamageReport {
 
   // Workflow State
   workflowState?: PTPPWorkflowState;
+  
+  rejectNoteRSD1?: string;
+  rejectNoteRSD2?: string;
+  rejectNoteAFTM?: string;
   
   // Old/Legacy fields to maintain compatibility temporarily
   tanggalTindakLanjut?: string;
