@@ -142,15 +142,14 @@ export default function LaporanKerusakanClient() {
       await addDoc(collection(firestore, 'damage_reports'), newReport);
       
       // Kirim Notifikasi WhatsApp secara asynchronous tanpa memblokir UI
-      const waMessage = `🚨 *LAPORAN KERUSAKAN BARU* 🚨\n\n` +
-                        `*No PTPP:* ${noLaporan}\n` +
-                        `*Pelapor:* ${newReport.namaPelapor} (${newReport.jabatanPelapor})\n` +
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aplikasi-ptpp.com';
+      const waMessage = `Halo Urip Widodo, terdapat 1 laporan PTPP baru (No: ${noLaporan}) dari ${newReport.namaPelapor} yang membutuhkan review Anda.\n\n` +
                         `*Prioritas:* ${priority}\n` +
                         `*Area:* ${areaKerusakan}\n` +
                         `*Kendala:* ${jenisKerusakan}\n\n` +
-                        `_Silakan segera cek aplikasi untuk tindak lanjut._`;
+                        `Silakan klik link berikut untuk login dan melakukan review:\n${appUrl}`;
       
-      sendWhatsAppNotification(waMessage).catch(err => console.error('Gagal memanggil Server Action WA:', err));
+      sendWhatsAppNotification(waMessage, undefined, '085729804292').catch(err => console.error('Gagal memanggil Server Action WA:', err));
 
       toast({
         title: 'Sukses',
@@ -242,6 +241,13 @@ export default function LaporanKerusakanClient() {
         signatureSpvRsd2_timestamp: serverTimestamp() as any,
         signatureSpvRsd2_image: dataUrl,
       }, 'Tindak lanjut perbaikan disetujui (SPV RSD). Lanjut ke AFTM.');
+
+      // Kirim Notifikasi ke AFTM (Wahyudi) setelah SPV RSD setuju
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aplikasi-ptpp.com';
+      const waMessage = `Halo Wahyudi, laporan PTPP No: ${selectedReport?.noLaporan} telah disetujui oleh Supervisor RSD dan kini membutuhkan Approval AFTM dari Anda untuk menutup (close) laporan.\n\n` +
+                        `Silakan klik link berikut untuk login dan melakukan approval:\n${appUrl}`;
+      
+      sendWhatsAppNotification(waMessage, undefined, '081380887280').catch(err => console.error('Gagal memanggil Server Action WA:', err));
     } else if (signatureAction === 'part3') {
       await updateReportState({
         status, 
@@ -337,6 +343,16 @@ export default function LaporanKerusakanClient() {
       
       const reportRef = doc(firestore, 'damage_reports', selectedReport.id);
       await updateDoc(reportRef, updates);
+      
+      // Kirim Notifikasi ke SPV RSD (Urip Widodo) bahwa SPV Maintenance telah merespon
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aplikasi-ptpp.com';
+      const waMessage = `Halo Urip Widodo, laporan PTPP No: ${selectedReport.noLaporan} telah ditindaklanjuti oleh tim Maintenance dan membutuhkan tanda tangan / persetujuan Anda.\n\n` +
+                        `*Perbaikan:* ${tindakanPerbaikan}\n` +
+                        `*PIC:* ${pic}\n\n` +
+                        `Silakan klik link berikut untuk login dan menyetujui laporan:\n${appUrl}`;
+      
+      sendWhatsAppNotification(waMessage, undefined, '085729804292').catch(err => console.error('Gagal memanggil Server Action WA:', err));
+
       toast({ title: 'Sukses', description: 'Tindak lanjut disimpan dan ditandatangani.' });
       setIsEditOpen(false);
     } catch (err) {
@@ -588,7 +604,14 @@ export default function LaporanKerusakanClient() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-md border mt-4 gap-4">
                   <div>
                     <p className="text-xs text-slate-500 uppercase">Pemohon / Auditor</p>
-                    <p className="font-semibold text-slate-900">{selectedReport?.signaturePemohon || selectedReport?.namaPelapor}</p>
+                    {selectedReport?.signaturePemohon_image ? (
+                      <div className="mt-1 flex flex-col items-start">
+                        <img src={selectedReport.signaturePemohon_image} alt="Signature" className="h-12 object-contain border-b border-slate-200" />
+                        <p className="font-semibold text-slate-900 mt-1">{selectedReport?.signaturePemohon || selectedReport?.namaPelapor}</p>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900">{selectedReport?.signaturePemohon || selectedReport?.namaPelapor}</p>
+                    )}
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-xs text-slate-500 uppercase">Disetujui Oleh (Supervisor RSD)</p>
@@ -642,38 +665,38 @@ export default function LaporanKerusakanClient() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Perbaikan / Tindakan Sementara</Label>
-                        <Input value={perbaikanSementara} onChange={e => setPerbaikanSementara(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                        <Input value={perbaikanSementara} onChange={e => setPerbaikanSementara(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} />
                       </div>
                       <div className="space-y-2">
                         <Label>Tanggal Inspeksi</Label>
-                        <Input type="date" value={tanggalInspeksi} onChange={e => setTanggalInspeksi(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                        <Input type="date" value={tanggalInspeksi} onChange={e => setTanggalInspeksi(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} />
                       </div>
                     </div>
                     
                     <div className="space-y-2">
                       <Label>Analisa Penyebab Kerusakan</Label>
-                      <Textarea value={analisaPenyebab} onChange={e => setAnalisaPenyebab(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} rows={2} />
+                      <Textarea value={analisaPenyebab} onChange={e => setAnalisaPenyebab(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} rows={2} />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>Tindakan Perbaikan</Label>
-                        <Textarea value={tindakanPerbaikan} onChange={e => setTindakanPerbaikan(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} rows={2} />
+                        <Textarea value={tindakanPerbaikan} onChange={e => setTindakanPerbaikan(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} rows={2} />
                       </div>
                       <div className="space-y-2">
                         <Label>PIC (Tim Teknik)</Label>
-                        <Input value={pic} onChange={e => setPic(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                        <Input value={pic} onChange={e => setPic(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} />
                       </div>
                       <div className="space-y-2">
                         <Label>Target Waktu Pelaksanaan</Label>
-                        <Input type="date" value={waktuPelaksanaan} onChange={e => setWaktuPelaksanaan(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                        <Input type="date" value={waktuPelaksanaan} onChange={e => setWaktuPelaksanaan(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Dokumen yang Direvisi (Jika ada)</Label>
-                        <Select value={dokumenDirevisi} onValueChange={setDokumenDirevisi} disabled={selectedReport.signatureSpvMaintenance != null}>
+                        <Select value={dokumenDirevisi} onValueChange={setDokumenDirevisi} disabled={!!selectedReport.signatureSpvMaintenance}>
                           <SelectTrigger><SelectValue placeholder="Pilih dokumen..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Tidak Ada">Tidak Ada</SelectItem>
@@ -687,7 +710,7 @@ export default function LaporanKerusakanClient() {
                       </div>
                       <div className="space-y-2">
                         <Label>Target Waktu Verifikasi</Label>
-                        <Input type="date" value={targetWaktuVerifikasi} onChange={e => setTargetWaktuVerifikasi(e.target.value)} disabled={selectedReport.signatureSpvMaintenance != null} />
+                        <Input type="date" value={targetWaktuVerifikasi} onChange={e => setTargetWaktuVerifikasi(e.target.value)} disabled={!!selectedReport.signatureSpvMaintenance} />
                       </div>
                     </div>
 
@@ -765,7 +788,7 @@ export default function LaporanKerusakanClient() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Status PTPP</Label>
-                        <Select value={status} onValueChange={(v: any) => setStatus(v)} disabled={selectedReport.signatureAftm != null}>
+                        <Select value={status} onValueChange={(v: any) => setStatus(v)} disabled={!!selectedReport.signatureAftm}>
                           <SelectTrigger><SelectValue placeholder="Pilih status..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Close">Close</SelectItem>
@@ -776,12 +799,12 @@ export default function LaporanKerusakanClient() {
                       {status === 'Perlu Follow up' && (
                         <div className="space-y-2">
                           <Label>Target Verifikasi Selanjutnya</Label>
-                          <Input type="date" value={targetVerifikasiSelanjutnya} onChange={e => setTargetVerifikasiSelanjutnya(e.target.value)} disabled={selectedReport.signatureAftm != null} />
+                          <Input type="date" value={targetVerifikasiSelanjutnya} onChange={e => setTargetVerifikasiSelanjutnya(e.target.value)} disabled={!!selectedReport.signatureAftm} />
                         </div>
                       )}
                       <div className="space-y-2 md:col-span-2">
                         <Label>Catatan</Label>
-                        <Textarea value={catatan} onChange={e => setCatatan(e.target.value)} disabled={selectedReport.signatureAftm != null} rows={2} />
+                        <Textarea value={catatan} onChange={e => setCatatan(e.target.value)} disabled={!!selectedReport.signatureAftm} rows={2} />
                       </div>
                     </div>
 

@@ -1,8 +1,9 @@
 'use server';
 
-export async function sendWhatsAppNotification(message: string, imageUrl?: string) {
+export async function sendWhatsAppNotification(message: string, imageUrl?: string, target?: string) {
   const token = 'CuGgJDvoXw1ULh5QT8ui';
-  const targetNumbers = '085399770069,085298099251';
+  // Use provided target, otherwise use default admin numbers
+  const targetNumbers = target || '085399770069,085298099251';
 
   try {
     const params = new URLSearchParams({

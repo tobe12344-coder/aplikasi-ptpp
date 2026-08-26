@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { generateSequentialNoLaporan } from '@/lib/generateNoLaporan';
 import { useFirestore } from '@/firebase';
@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { sendWhatsAppNotification } from '@/app/actions/fonnte';
 import { useRouter } from 'next/navigation';
+import SignatureCanvas from 'react-signature-canvas';
 
 export default function GuestLaporanForm() {
   const firestore = useFirestore();
@@ -34,6 +35,7 @@ export default function GuestLaporanForm() {
   const [priority, setPriority] = useState<'Rendah' | 'Sedang' | 'Tinggi'>('Sedang');
   const [fotoKerusakan, setFotoKerusakan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const sigCanvas = useRef<SignatureCanvas>(null);
 
   useEffect(() => {
     const today = new Date();
@@ -58,6 +60,17 @@ export default function GuestLaporanForm() {
     e.preventDefault();
     if (!firestore) return;
     
+    const dataUrl = sigCanvas.current?.isEmpty() ? null : sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png');
+
+    if (!dataUrl) {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Tanda tangan wajib diisi.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let fotoUrl = '';
@@ -82,6 +95,7 @@ export default function GuestLaporanForm() {
         persyaratanDilanggar,
         batasWaktuReply,
         signaturePemohon: namaPelapor || 'Tamu',
+        signaturePemohon_image: dataUrl,
         priority,
         status: 'Open',
         workflowState: 'WAITING_SPV_RSD_1',
@@ -90,15 +104,14 @@ export default function GuestLaporanForm() {
 
       await addDoc(collection(firestore, 'damage_reports'), newReport);
       
-      const waMessage = `🚨 *LAPORAN KERUSAKAN BARU (TAMU)* 🚨\n\n` +
-                        `*No PTPP:* ${noLaporan}\n` +
-                        `*Pelapor:* ${newReport.namaPelapor}\n` +
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aplikasi-ptpp.com';
+      const waMessage = `Halo Urip Widodo, terdapat 1 laporan PTPP baru (No: ${noLaporan}) dari ${newReport.namaPelapor} yang membutuhkan review Anda.\n\n` +
                         `*Prioritas:* ${priority}\n` +
                         `*Area:* ${areaKerusakan}\n` +
                         `*Kendala:* ${jenisKerusakan}\n\n` +
-                        `_Silakan segera cek aplikasi untuk tindak lanjut._`;
+                        `Silakan klik link berikut untuk login dan melakukan review:\n${appUrl}`;
       
-      sendWhatsAppNotification(waMessage).catch(err => console.error('Gagal memanggil Server Action WA:', err));
+      sendWhatsAppNotification(waMessage, undefined, '085729804292').catch(err => console.error('Gagal memanggil Server Action WA:', err));
 
       toast({
         title: 'Sukses',
@@ -112,6 +125,7 @@ export default function GuestLaporanForm() {
       setSumberKetidaksesuaian('');
       setPersyaratanDilanggar('');
       setFotoKerusakan(null);
+      sigCanvas.current?.clear();
     } catch (error) {
       console.error('Error creating report:', error);
       toast({
@@ -134,16 +148,6 @@ export default function GuestLaporanForm() {
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label>Nama Pelapor</Label>
-            <Input 
-              required 
-              value={namaPelapor} 
-              onChange={e => setNamaPelapor(e.target.value)} 
-              placeholder="Masukkan nama lengkap Anda..." 
-            />
-          </div>
-
           <div className="space-y-2">
             <Label>Area Kerusakan (Lokasi)</Label>
             <Input 
@@ -237,6 +241,36 @@ export default function GuestLaporanForm() {
               onChange={e => setFotoKerusakan(e.target.files?.[0] || null)} 
               className="cursor-pointer"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Nama Pelapor</Label>
+            <Input 
+              required 
+              value={namaPelapor} 
+              onChange={e => setNamaPelapor(e.target.value)} 
+              placeholder="Masukkan nama lengkap Anda..." 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tanda Tangan</Label>
+            <div className="flex flex-col gap-2">
+              <div className="border-2 border-dashed border-gray-300 rounded-md bg-slate-50 w-full overflow-hidden" style={{ height: '200px' }}>
+                <SignatureCanvas 
+                  ref={sigCanvas}
+                  penColor="black"
+                  canvasProps={{
+                    className: 'signature-canvas w-full h-full'
+                  }}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button type="button" variant="outline" size="sm" onClick={() => sigCanvas.current?.clear()}>
+                  Bersihkan Tanda Tangan
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 flex justify-between gap-2 border-t mt-6">
