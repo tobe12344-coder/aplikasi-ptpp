@@ -142,8 +142,10 @@ export default function LaporanKerusakanClient() {
       await addDoc(collection(firestore, 'damage_reports'), newReport);
       
       // Kirim Notifikasi WhatsApp secara asynchronous tanpa memblokir UI
-      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aplikasi-ptpp.com';
-      const waMessage = `Halo Urip Widodo, terdapat 1 laporan PTPP baru (No: ${noLaporan}) dari ${newReport.namaPelapor} yang membutuhkan review Anda.\n\n` +
+      const appUrl = 'https://deomaintenance.com/';
+      const waMessage = `🚨 *LAPORAN KERUSAKAN BARU* 🚨\n\n` +
+                        `*No PTPP:* ${noLaporan}\n` +
+                        `*Pelapor:* ${newReport.namaPelapor} (${newReport.jabatanPelapor})\n` +
                         `*Prioritas:* ${priority}\n` +
                         `*Area:* ${areaKerusakan}\n` +
                         `*Kendala:* ${jenisKerusakan}\n\n` +
