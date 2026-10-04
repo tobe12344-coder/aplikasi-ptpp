@@ -8,7 +8,7 @@ admin.initializeApp();
 const db = admin.firestore();
 // Token dan nomor tujuan WhatsApp
 const FONNTE_TOKEN = "CuGgJDvoXw1ULh5QT8ui";
-const TARGET_NUMBERS = "085399770069,085298099251";
+const TARGET_NUMBERS = "085399770069,085298099251,081247895859,082248013774";
 /**
  * Scheduled function to run every day at 07:00 AM in Jayapura/Sorong (WIT) timezone.
  */
@@ -73,11 +73,11 @@ exports.sendMaintenanceReminder = (0, scheduler_1.onSchedule)({
         if (dueItems.length > 0) {
             message += `🛠️ *Ceklish Maintenance*\n`;
             message += `Terdapat *${dueItems.length} item* yang memerlukan inspeksi:\n`;
-            dueItems.forEach((item, index) => {
-                const title = item.equipmentName || item.saranaId || `Item #${index + 1}`;
+            dueItems.forEach((cItem, index) => {
+                const title = cItem.item || `Item #${index + 1}`;
                 message += `${index + 1}. ${title}`;
-                if (item.equipmentType) {
-                    message += ` (${item.equipmentType})`;
+                if (cItem.sf) {
+                    message += ` (${cItem.sf})`;
                 }
                 message += `\n`;
             });

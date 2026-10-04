@@ -7,7 +7,7 @@ const db = admin.firestore();
 
 // Token dan nomor tujuan WhatsApp
 const FONNTE_TOKEN = "CuGgJDvoXw1ULh5QT8ui";
-const TARGET_NUMBERS = "085399770069,085298099251";
+const TARGET_NUMBERS = "085399770069,085298099251,081247895859,082248013774";
 
 /**
  * Scheduled function to run every day at 07:00 AM in Jayapura/Sorong (WIT) timezone.
