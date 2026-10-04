@@ -2,7 +2,7 @@
 
 export async function sendWhatsAppNotification(message: string, imageUrl?: string, target?: string) {
   const token = 'CuGgJDvoXw1ULh5QT8ui';
-  const defaultNumbers = '085399770069,085298099251';
+  const defaultNumbers = '085399770069,085298099251,081247895859,082248013774';
   const targetNumbers = target ? `${target},${defaultNumbers}` : defaultNumbers;
 
   try {
