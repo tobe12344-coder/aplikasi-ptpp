@@ -22,6 +22,9 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import PrintDamageReport from './PrintDamageReport';
 import { sendWhatsAppNotification } from '@/app/actions/fonnte';
 
+// Persetujuan SPV RSD selalu atas nama Urip Widodo, siapa pun akun yang menandatangani
+const SPV_RSD_NAME = 'Urip Widodo';
+
 export default function LaporanKerusakanClient() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -229,7 +232,7 @@ export default function LaporanKerusakanClient() {
     if (signatureAction === 'part1') {
       await updateReportState({
         workflowState: 'WAITING_MAINTENANCE',
-        signatureSpvRsd1: user?.displayName || user?.email || 'Unknown',
+        signatureSpvRsd1: SPV_RSD_NAME,
         signatureSpvRsd1_timestamp: serverTimestamp() as any,
         signatureSpvRsd1_image: dataUrl,
         tanggalInspeksi: format(new Date(), 'yyyy-MM-dd'),
@@ -239,7 +242,7 @@ export default function LaporanKerusakanClient() {
     } else if (signatureAction === 'part2_rsd') {
       await updateReportState({
         workflowState: 'WAITING_AFTM',
-        signatureSpvRsd2: user?.displayName || user?.email || 'Unknown',
+        signatureSpvRsd2: SPV_RSD_NAME,
         signatureSpvRsd2_timestamp: serverTimestamp() as any,
         signatureSpvRsd2_image: dataUrl,
       }, 'Tindak lanjut perbaikan disetujui (SPV RSD). Lanjut ke AFTM.');
